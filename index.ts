@@ -40,10 +40,12 @@ export function createServer({
 	port,
 	webSocket,
 	state = {},
+	debug = false
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: Record<string, any>;
+	debug: boolean;
 }): EzBunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
 		GET: {},
@@ -56,6 +58,12 @@ export function createServer({
 		CONNECT: {},
 		TRACE: {},
 	};
+
+	function logLine(...args) {
+		if(!debug) {
+			console.log(...args)
+		}
+	}
 
 	function getMatchingPathKey(method: string, path: string): string | null {
 		if (!validateMethod(method)) {
@@ -161,7 +169,7 @@ export function createServer({
 						const searchParams = url.searchParams;
 						const method = request.method;
 
-						console.log(method, path);
+						logLine(method, path);
 
 						// handle websockets:
 						if (webSocket) {
@@ -194,7 +202,7 @@ export function createServer({
 
 						const pathKey = getMatchingPathKey(method, path);
 
-						console.log('pathKey', pathKey);
+						logLine('pathKey', pathKey);
 
 						if (!pathKey) {
 							throw Object.assign({}, new Error('Not found'), {
@@ -230,7 +238,7 @@ export function createServer({
 										};
 									} catch (e) {
 										// try to handle error better
-										console.log(e);
+										logLine(e);
 									}
 								}
 
@@ -250,11 +258,11 @@ export function createServer({
 
 								return registeredMethods[method][pathKey](req);
 							} catch (e) {
-								console.log(e);
+								logLine(e);
 								return new Response('Internal server error', { status: 500 });
 							}
 						} else {
-							console.log(404, method, path);
+							logLine(404, method, path);
 							throw Object.assign({}, new Error('Not found'), {
 								status: 404,
 							});
