@@ -1,14 +1,29 @@
 {
-  "name": "bun-server",
-  "version": "1.1.0",
-  "description": "",
+  "name": "@nex-app/bun-server",
+  "version": "1.0.1",
+  "description": "A simple server wrapper for the Bun.js webserver to give a more express-like experience.",
   "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "nacho",
   "dependencies": {
     "@types/bun": "^1.1.1"
-  }
+  },
+  "directories": {
+    "example": "examples"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xylude/bun-server.git"
+  },
+  "keywords": [
+    "bun.js",
+    "server"
+  ],
+  "bugs": {
+    "url": "https://github.com/xylude/bun-server/issues"
+  },
+  "homepage": "https://github.com/xylude/bun-server#readme"
 }
