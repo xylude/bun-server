@@ -1,4 +1,4 @@
-import { createServer } from './server';
+import { createServer } from "..";
 
 const app = createServer({
 	port: 3101,

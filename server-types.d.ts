@@ -1,17 +1,4 @@
-export type WrappedServerWebSocket = {
-	conn: ServerWebSocket<any>;
-	user: User;
-};
-
-export function wrapWebsocket(
-	ws: ServerWebSocket<any>,
-	user: User
-): WrappedServerWebSocket {
-	return {
-		conn: ws,
-		user,
-	};
-}
+import { Server, ServerWebSocket } from "bun";
 
 export type HandlerFunc = (req: RequestHandler) => Response | Promise<Response>;
 

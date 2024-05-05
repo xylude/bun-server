@@ -45,7 +45,7 @@ export function createServer({
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: Record<string, any>;
-	debug: boolean;
+	debug?: boolean;
 }): EzBunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
 		GET: {},
@@ -60,7 +60,7 @@ export function createServer({
 	};
 
 	function logLine(...args) {
-		if(!debug) {
+		if(debug) {
 			console.log(...args)
 		}
 	}
