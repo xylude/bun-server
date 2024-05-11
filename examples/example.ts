@@ -19,6 +19,8 @@ app.get('/hello', (req, res) => {
 	const user = req.state.authenticate();
 	const db = req.state.db();
 	console.log(req.params.query);
+	res.setStatus(400);
+	res.setHeader('custom', 'custom value');
 	return res.send({
 		message: 'Hello World',
 	});

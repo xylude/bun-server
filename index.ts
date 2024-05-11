@@ -229,10 +229,13 @@ export function createServer({
 								const res = (): ResponseHandler => {
 									const headers: Record<string, string> = {};
 									let sent = false;
+									let status = 200;
 
 									return {
-										status: 200,
-										set: (key: string, value: string) => {
+										setStatus: (statusCode: number) => {
+											status = statusCode;
+										},
+										setHeader: (key: string, value: string) => {
 											if(!sent) {
 												headers[key] = value;
 											} else {
@@ -242,7 +245,11 @@ export function createServer({
 										send: (data: any) => {
 											sent = true;
 											const isObj = typeof data !== 'string';
-											const response = isObj ? Response.json(data) : new Response(data);
+											const response = isObj ? Response.json(data, {
+												status,
+											}) : new Response(data, {
+												status
+											});
 											const typeHeader = isObj ? 'application/json' : 'text/html';
 
 											response.headers.set('Content-Type', typeHeader);

@@ -48,8 +48,8 @@ export type RequestHandler = {
 export type ErrorHandler = (err: any) => void;
 
 export type ResponseHandler = {
-	status: number;
-    set: (key: string, value: string) => void;
+	setStatus: (statusCode: number) => void;
+    setHeader: (key: string, value: string) => void;
     send: (data: any) => Response;
 }
 
