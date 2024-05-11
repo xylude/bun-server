@@ -1,6 +1,6 @@
 import { Server, ServerWebSocket } from "bun";
 
-export type HandlerFunc = (req: RequestHandler) => Response | Promise<Response>;
+export type HandlerFunc = (req: RequestHandler, res: ResponseHandler) => Response | Promise<Response>;
 
 export type WebSocketConnectedHandler = (
 	ws: ServerWebSocket<any>
@@ -47,7 +47,13 @@ export type RequestHandler = {
 
 export type ErrorHandler = (err: any) => void;
 
-export type EzBunServer = {
+export type ResponseHandler = {
+	status: number;
+    set: (key: string, value: string) => void;
+    send: (data: any) => Response;
+}
+
+export type BunServer = {
 	get: (path: string, handler: HandlerFunc) => void;
 	post: (path: string, handler: HandlerFunc) => void;
 	put: (path: string, handler: HandlerFunc) => void;

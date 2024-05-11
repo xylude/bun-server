@@ -1,10 +1,11 @@
 import {
 	ErrorHandler,
-	EzBunServer,
+	BunServer,
 	HandlerFunc,
 	RequestHandler,
 	ValidMethods,
 	WebSocketConfig,
+	ResponseHandler,
 } from './server-types';
 
 export type * from './server-types';
@@ -40,13 +41,15 @@ export function createServer({
 	port,
 	webSocket,
 	state = {},
-	debug = false
+	debug = false,
+	globalHeaders = {},
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: Record<string, any>;
+	globalHeaders?: Record<string, any>
 	debug?: boolean;
-}): EzBunServer {
+}): BunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
 		GET: {},
 		POST: {},
@@ -123,7 +126,7 @@ export function createServer({
 
 	let _errorHandler: ErrorHandler | null = null;
 
-	const publicAPI: EzBunServer = {
+	const publicAPI: BunServer = {
 		get: function (path: string, handler: HandlerFunc) {
 			registeredMethods.GET[path] = handler;
 		},
@@ -223,6 +226,40 @@ export function createServer({
 									state,
 								};
 
+								const res = (): ResponseHandler => {
+									const headers: Record<string, string> = {};
+									let sent = false;
+
+									return {
+										status: 200,
+										set: (key: string, value: string) => {
+											if(!sent) {
+												headers[key] = value;
+											} else {
+												console.warn('Headers already sent');
+											}
+										},
+										send: (data: any) => {
+											sent = true;
+											const isObj = typeof data !== 'string';
+											const response = isObj ? Response.json(data) : new Response(data);
+											const typeHeader = isObj ? 'application/json' : 'text/html';
+
+											response.headers.set('Content-Type', typeHeader);
+
+											Object.keys(globalHeaders).forEach(header => {
+												response.headers.set(header, globalHeaders[header]);
+											});
+
+											Object.keys(headers).forEach(header => {
+												response.headers.set(header, headers[header]);
+											});
+
+											return response;
+										},
+									}
+								};
+
 								if (['POST', 'PUT', 'PATCH'].includes(method)) {
 									try {
 										if (
@@ -231,7 +268,7 @@ export function createServer({
 												?.includes('application/json')
 										) {
 											req.params.body = (await request.json()) || {};
-											return registeredMethods[method][pathKey](req);
+											return registeredMethods[method][pathKey](req, res());
 										}
 										req.params.body = {
 											text: request.body,
@@ -253,10 +290,10 @@ export function createServer({
 								req.params.query = query;
 
 								if (registeredMethods[method][pathKey] instanceof Promise) {
-									return await registeredMethods[method][pathKey](req);
+									return await registeredMethods[method][pathKey](req, res());
 								}
 
-								return registeredMethods[method][pathKey](req);
+								return registeredMethods[method][pathKey](req, res());
 							} catch (e) {
 								logLine(e);
 								return new Response('Internal server error', { status: 500 });
