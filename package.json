@@ -1,6 +1,6 @@
 {
   "name": "@nex-app/bun-server",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A simple server wrapper for the Bun.js webserver to give a more express-like experience.",
   "main": "index.ts",
   "scripts": {
