@@ -13,7 +13,7 @@
   "directories": {
     "example": "examples"
   },
-  "devDependencies": {},
+  "devDependencies": { "prettier": "^3.2.5" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/xylude/bun-server.git"

@@ -47,7 +47,7 @@ export function createServer({
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: Record<string, any>;
-	globalHeaders?: Record<string, any>
+	globalHeaders?: Record<string, any>;
 	debug?: boolean;
 }): BunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
@@ -63,8 +63,8 @@ export function createServer({
 	};
 
 	function logLine(...args) {
-		if(debug) {
-			console.log(...args)
+		if (debug) {
+			console.log(...args);
 		}
 	}
 
@@ -199,8 +199,16 @@ export function createServer({
 							return new Response('Method not allowed', { status: 405 });
 						}
 
-						if (method === 'OPTIONS') {
-							return new Response('OK', { status: 200 });
+						// we know the path is valid so if it's OPTIONS we can send back the globally set headers at the very least for now
+						if (['OPTIONS'].includes(method)) {
+							const response = new Response(null, {
+								status: 200,
+							});
+							Object.keys(globalHeaders).forEach((header) => {
+								logLine('set header', header, globalHeaders[header]);
+								response.headers.set(header, globalHeaders[header]);
+							});
+							return response;
 						}
 
 						const pathKey = getMatchingPathKey(method, path);
@@ -236,7 +244,7 @@ export function createServer({
 											status = statusCode;
 										},
 										setHeader: (key: string, value: string) => {
-											if(!sent) {
+											if (!sent) {
 												headers[key] = value;
 											} else {
 												console.warn('Headers already sent');
@@ -245,26 +253,30 @@ export function createServer({
 										send: (data: any) => {
 											sent = true;
 											const isObj = typeof data !== 'string';
-											const response = isObj ? Response.json(data, {
-												status,
-											}) : new Response(data, {
-												status
-											});
-											const typeHeader = isObj ? 'application/json' : 'text/html';
+											const response = isObj
+												? Response.json(data, {
+														status,
+													})
+												: new Response(data, {
+														status,
+													});
+											const typeHeader = isObj
+												? 'application/json'
+												: 'text/html';
 
 											response.headers.set('Content-Type', typeHeader);
 
-											Object.keys(globalHeaders).forEach(header => {
+											Object.keys(globalHeaders).forEach((header) => {
 												response.headers.set(header, globalHeaders[header]);
 											});
 
-											Object.keys(headers).forEach(header => {
+											Object.keys(headers).forEach((header) => {
 												response.headers.set(header, headers[header]);
 											});
 
 											return response;
 										},
-									}
+									};
 								};
 
 								if (['POST', 'PUT', 'PATCH'].includes(method)) {

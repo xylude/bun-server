@@ -13,6 +13,7 @@ const app = createServer({
 			console.log('db!');
 		},
 	},
+	debug: true,
 });
 
 app.get('/hello', (req, res) => {
@@ -45,7 +46,7 @@ app.get('/text', (req, res) => {
 })
 
 app.onError((err) => {
-	console.log('error handler', err);
+	console.log('error handler', err.message);
 	return new Response('error', { status: err.status || 500 });
 });
 
