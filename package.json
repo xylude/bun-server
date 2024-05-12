@@ -1,6 +1,6 @@
 {
   "name": "@nex-app/bun-server",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "A simple server wrapper for the Bun.js webserver to give a more express-like experience.",
   "main": "index.ts",
   "scripts": {
@@ -13,7 +13,9 @@
   "directories": {
     "example": "examples"
   },
-  "devDependencies": { "prettier": "^3.2.5" },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/xylude/bun-server.git"
