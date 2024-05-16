@@ -9,17 +9,22 @@ If you'd like state that's available for any request objects, you can add it to 
 ### The request object:
 
 **request:** The original request object that was passed into the native Bun server.
+
 **params:** Contains the following - query: an object containing the key/value pairs of the querystring. - body: either an object or string of the JSON request or an object containing a single property `text` containing the plain text of the request body - path: an object containing the key/value pairs of the path variables eg. `/foo/:bar` will return { bar: 'whatever bar was' }`
+
 **state:** Anything you have set in the state object upon server creation. I believe this is currently mutable so be careful if you are assigning
 values here.
 
 ### The response object:
 
 **setStatus(status: number):** Sets the HTTP status code to respond with
+
 **setHeader(k: string, v:string):** Sets a header for the response
+
 **send(responseTextOrObject: string):** Send the response to the client.
 
 The `res.send()` method will automatically send the response as JSON if you pass an object in.
+
 `req.body` will try to parse the input as an object if the request header content type is application/json.
 
 ## Example Usage
