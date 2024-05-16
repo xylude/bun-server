@@ -16,7 +16,9 @@ const app = createServer({
 	webSocket: {
 		path: '/ws', // localhost:3222/ws from the client
 		onUpgrade: (req) => {
-			console.log('you can upgrade here, must return a boolean!');
+			console.log(
+				'you can upgrade here, whatever you return will be attached to socket.data'
+			);
 			return {
 				userId: '1234',
 			};
