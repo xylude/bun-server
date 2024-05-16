@@ -287,11 +287,12 @@ export function createServer({
 												?.includes('application/json')
 										) {
 											req.params.body = (await request.json()) || {};
-											return registeredMethods[method][pathKey](req, res());
+										} else {
+											req.params.body = {
+												text: request.body,
+											};
 										}
-										req.params.body = {
-											text: request.body,
-										};
+										return registeredMethods[method][pathKey](req, res());
 									} catch (e) {
 										// try to handle error better
 										logLine(e);
