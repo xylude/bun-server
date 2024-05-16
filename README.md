@@ -1,17 +1,38 @@
 # Bun Server
 
-This is a pretty small and lightweight abstraction from the built-in Bun webserver. Currently, it handles routing and websockets (what I need for my own purposes right now). As I get time I will add CORS, middleware, and other need to haves. 
+This is a pretty small and lightweight abstraction from the built-in Bun webserver. Currently, it handles routing and websockets (what I need for my own purposes right now).
+
+You can enable CORS headers by passing them into the `globalHeaders` property of the createServer function.
+
+If you'd like state that's available for any request objects, you can add it to the `state` property.
+
+### The request object:
+
+**request:** The original request object that was passed into the native Bun server.
+**params:** Contains the following - query: an object containing the key/value pairs of the querystring. - body: either an object or string of the JSON request or an object containing a single property `text` containing the plain text of the request body - path: an object containing the key/value pairs of the path variables eg. `/foo/:bar` will return { bar: 'whatever bar was' }`
+**state:** Anything you have set in the state object upon server creation. I believe this is currently mutable so be careful if you are assigning
+values here.
+
+### The response object:
+
+**setStatus(status: number):** Sets the HTTP status code to respond with
+**setHeader(k: string, v:string):** Sets a header for the response
+**send(responseTextOrObject: string):** Send the response to the client.
+
+The `res.send()` method will automatically send the response as JSON if you pass an object in.
+`req.body` will try to parse the input as an object if the request header content type is application/json.
 
 ## Example Usage
 
 ```javascript
-// create a server
-import { createServer } from "..";
+import { createServer } from '..';
 
 const app = createServer({
-	port: 3101,
+	port: 3222,
+	globalHeaders: {
+		'Access-Control-Allow-Origin': '*',
+	},
 	state: {
-    // lets you add state across requests for whatever you might want to attach to every request object globally
 		authenticate: () => {
 			console.log('authenticate!');
 		},
@@ -19,69 +40,44 @@ const app = createServer({
 			console.log('db!');
 		},
 	},
-  webSocket: {
-			path: '/ws',
-			onUpgrade: (req) => {
-        // you can return null here and it will halt the upgrade attempt. This is a solid spot
-        // to authenticate the connection.
-
-        // just a way to get information from the request before connecting.
-				// const cookies = cookie.parse(req.headers.get('Cookie') || '');
-				return {
-					// testData: cookies['somecookie'],
-					testData: `Test ${Date.now()}`,
-				};
-			},
-			onConnected: (ws) => {
-				console.log(ws.data.testData);
-				console.log('connected');
-			},
-			onMessage: (ws, message) => {
-				console.log(ws.data.testData);
-				console.log('message', message);
-			},
-			onClose: (ws) => {
-				console.log(ws.data.testData);
-				console.log('closed');
-			},
-		},
-  // uncomment if you want console.logs about various happenings
-  // debug: true
+	debug: true,
 });
 
-app.get('/hello', (req) => {
+app.get('/hello', (req, res) => {
 	const user = req.state.authenticate();
 	const db = req.state.db();
 	console.log(req.params.query);
-	return Response.json({
+	res.setStatus(400);
+	res.setHeader('custom', 'custom value');
+	return res.send({
 		message: 'Hello World',
 	});
 });
 
-app.get('/hello/:id', (req) => {
-  const { id } = req.params.path;
-	return Response.json({
+app.get('/hello/:id', (req, res) => {
+	return res.send({
 		message: 'Hello World with param',
 		params: req.params,
 	});
 });
 
-app.post('/hello/:id/configure/:name', (req) => {
-  // if content-type is json then it comes back as a js object, else just plain text.
-  const { foo, bar } = req.params.body;
-	return Response.json({
+app.get('/hello/:id/configure/:name', (req, res) => {
+	return res.send({
 		message: 'Hello World with param',
 		params: req.params,
 	});
+});
+
+app.get('/text', (req, res) => {
+	return res.send('text content');
 });
 
 app.onError((err) => {
-	console.log('error handler', err);
+	console.log('error handler', err.message);
 	return new Response('error', { status: err.status || 500 });
 });
 
 const server = app.start();
 
 console.log('server started', server.url.host);
-
 ```
