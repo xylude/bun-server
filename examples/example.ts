@@ -1,4 +1,4 @@
-import { createServer } from "..";
+import { createServer } from '..';
 
 const app = createServer({
 	port: 3222,
@@ -11,6 +11,28 @@ const app = createServer({
 		},
 		db: () => {
 			console.log('db!');
+		},
+	},
+	webSocket: {
+		path: '/ws', // localhost:3222/ws from the client
+		onUpgrade: (req) => {
+			console.log('you can upgrade here, must return a boolean!');
+			return {
+				userId: '1234',
+			};
+		},
+		onConnected: (socket) => {
+			console.log('A socket was connected');
+		},
+		onMessage: (socket, message) => {
+			// 1234 set in the upgrade function. You can sessionize like this or just emit to select clients rather than everyone on the socket using this
+			console.log(socket.data.userId);
+			console.log('a message was received', message);
+			// echo back:
+			socket.send(message);
+		},
+		onClose: (socket) => {
+			console.log('socket connection was closed');
 		},
 	},
 	debug: true,
@@ -43,7 +65,7 @@ app.get('/hello/:id/configure/:name', (req, res) => {
 
 app.get('/text', (req, res) => {
 	return res.send('text content');
-})
+});
 
 app.onError((err) => {
 	console.log('error handler', err.message);
