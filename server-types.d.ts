@@ -1,6 +1,9 @@
-import { Server, ServerWebSocket } from "bun";
+import { Server, ServerWebSocket } from 'bun';
 
-export type HandlerFunc = (req: RequestHandler, res: ResponseHandler) => Response | Promise<Response>;
+export type HandlerFunc = (
+	req: RequestHandler,
+	res: ResponseHandler
+) => Response | Promise<Response>;
 
 export type WebSocketConnectedHandler = (
 	ws: ServerWebSocket<any>
@@ -42,6 +45,7 @@ export type RequestHandler = {
 		query: Record<string, string>;
 		path: Record<string, string>;
 	};
+	headers: Headers;
 	state: Record<string, any>;
 };
 
@@ -49,9 +53,9 @@ export type ErrorHandler = (err: any) => void;
 
 export type ResponseHandler = {
 	setStatus: (statusCode: number) => void;
-    setHeader: (key: string, value: string) => void;
-    send: (data: any) => Response;
-}
+	setHeader: (key: string, value: string) => void;
+	send: (data: any) => Response;
+};
 
 export type BunServer = {
 	get: (path: string, handler: HandlerFunc) => void;

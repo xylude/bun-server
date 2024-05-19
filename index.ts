@@ -231,6 +231,7 @@ export function createServer({
 										body: {},
 										path: getParamsFromPath(pathKey, path),
 									},
+									headers: request.headers,
 									state,
 								};
 
