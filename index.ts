@@ -180,18 +180,46 @@ export function createServer({
 								if (webSocket.onUpgrade) {
 									const upgradeData = webSocket.onUpgrade(request);
 									if (!upgradeData) {
-										return new Response('WebSocket upgrade error', {
-											status: 400,
-										});
+										throw Object.assign(
+											{},
+											new Error(
+												'Websocket upgrade error. The onUpgrade function threw.'
+											),
+											{
+												status: 400,
+											}
+										);
 									}
 
 									const success = server.upgrade(request, {
 										data: upgradeData,
 									});
-									return success
-										? undefined
-										: new Response('WebSocket upgrade error', { status: 400 });
+									if (!success) {
+										throw Object.assign(
+											{},
+											new Error(
+												'Websocket upgrade error. Bun threw while trying to upgrade the connection.'
+											),
+											{
+												status: 400,
+											}
+										);
+									}
+								} else {
+									const success = server.upgrade(request);
+									if (!success) {
+										throw Object.assign(
+											{},
+											new Error(
+												'Websocket upgrade error. Bun threw while trying to upgrade the connection.'
+											),
+											{
+												status: 400,
+											}
+										);
+									}
 								}
+								return;
 							}
 						}
 
@@ -223,7 +251,16 @@ export function createServer({
 
 						if (registeredMethods[method][pathKey]) {
 							try {
-								// todo add utility methods to req
+								// this is redundant but I guess somehow it might be possible for the
+								// `Request.Headers` type to be something other than Record<string, string>
+								const _headers: Record<string, string> = Object.keys(
+									request.headers
+								).reduce((acc, current) => {
+									// normalize to lower case
+									acc[current.toLowerCase()] = request.headers[current];
+									return acc;
+								}, {});
+
 								const req: RequestHandler = {
 									request,
 									params: {
@@ -231,7 +268,7 @@ export function createServer({
 										body: {},
 										path: getParamsFromPath(pathKey, path),
 									},
-									headers: request.headers,
+									headers: _headers,
 									state,
 								};
 

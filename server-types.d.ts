@@ -45,7 +45,7 @@ export type RequestHandler = {
 		query: Record<string, string>;
 		path: Record<string, string>;
 	};
-	headers: Headers;
+	headers: Record<string, string>;
 	state: Record<string, any>;
 };
 

@@ -48,6 +48,7 @@ app.get('/hello', (req, res) => {
 	res.setHeader('custom', 'custom value');
 	return res.send({
 		message: 'Hello World',
+		headers: req.headers['user-agent'],
 	});
 });
 
