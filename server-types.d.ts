@@ -49,7 +49,7 @@ export type RequestHandler = {
 	state: Record<string, any>;
 };
 
-export type ErrorHandler = (err: any) => void;
+export type ErrorHandler = (err: any) => Response;
 
 export type ResponseHandler = {
 	setStatus: (statusCode: number) => void;

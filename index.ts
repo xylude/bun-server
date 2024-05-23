@@ -255,11 +255,13 @@ export function createServer({
 								// `Request.Headers` type to be something other than Record<string, string>
 								const _headers: Record<string, string> = Object.keys(
 									request.headers
-								).reduce((acc, current) => {
-									// normalize to lower case
-									acc[current.toLowerCase()] = request.headers[current];
-									return acc;
-								}, {});
+								).reduce(
+									(acc, key) => {
+										acc[key] = request.headers.get(key)!;
+										return acc;
+									},
+									{} as Record<string, string>
+								);
 
 								const req: RequestHandler = {
 									request,
