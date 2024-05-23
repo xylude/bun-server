@@ -251,18 +251,6 @@ export function createServer({
 
 						if (registeredMethods[method][pathKey]) {
 							try {
-								// this is redundant but I guess somehow it might be possible for the
-								// `Request.Headers` type to be something other than Record<string, string>
-								const _headers: Record<string, string> = Object.keys(
-									request.headers
-								).reduce(
-									(acc, key) => {
-										acc[key] = request.headers.get(key)!;
-										return acc;
-									},
-									{} as Record<string, string>
-								);
-
 								const req: RequestHandler = {
 									request,
 									params: {
@@ -270,7 +258,7 @@ export function createServer({
 										body: {},
 										path: getParamsFromPath(pathKey, path),
 									},
-									headers: _headers,
+									headers: request.headers,
 									state,
 								};
 
