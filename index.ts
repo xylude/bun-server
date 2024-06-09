@@ -354,7 +354,13 @@ export function createServer({
 						}
 					} catch (e) {
 						if (_errorHandler) {
-							return _errorHandler(e);
+							return _errorHandler({
+								error: e,
+								method: request.method,
+								path: request.url,
+								headers: request.headers,
+								status: e.status,
+							});
 						} else {
 							return new Response('Internal server error', { status: 500 });
 						}
