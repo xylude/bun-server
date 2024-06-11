@@ -43,12 +43,14 @@ export function createServer({
 	state = {},
 	debug = false,
 	globalHeaders = {},
+	onRequest,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: Record<string, any>;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
+	onRequest?: (req: RequestHandler) => boolean;
 }): BunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
 		GET: {},
@@ -172,7 +174,34 @@ export function createServer({
 						const searchParams = url.searchParams;
 						const method = request.method;
 
+						const pathKey = getMatchingPathKey(method, path);
+						if (!pathKey) {
+							throw Object.assign({}, new Error('Not found'), {
+								status: 404,
+							});
+						}
+						logLine('pathKey', pathKey);
+
+						const req: RequestHandler = {
+							request,
+							params: {
+								query: {},
+								body: {},
+								path: getParamsFromPath(pathKey, path),
+							},
+							headers: request.headers,
+							state,
+						};
 						logLine(method, path);
+
+						if (onRequest) {
+							const allow = onRequest(req);
+							if (!allow) {
+								throw Object.assign({}, new Error('Bad Request'), {
+									status: 400,
+								});
+							}
+						}
 
 						// handle websockets:
 						if (webSocket) {
@@ -239,29 +268,8 @@ export function createServer({
 							return response;
 						}
 
-						const pathKey = getMatchingPathKey(method, path);
-
-						logLine('pathKey', pathKey);
-
-						if (!pathKey) {
-							throw Object.assign({}, new Error('Not found'), {
-								status: 404,
-							});
-						}
-
 						if (registeredMethods[method][pathKey]) {
 							try {
-								const req: RequestHandler = {
-									request,
-									params: {
-										query: {},
-										body: {},
-										path: getParamsFromPath(pathKey, path),
-									},
-									headers: request.headers,
-									state,
-								};
-
 								const res = (): ResponseHandler => {
 									const headers: Record<string, string> = {};
 									let sent = false;

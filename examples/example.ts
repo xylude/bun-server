@@ -1,5 +1,7 @@
 import { createServer } from '..';
 
+const publicRoutes = ['/hellos'];
+
 const app = createServer({
 	port: 3222,
 	globalHeaders: {
@@ -38,12 +40,25 @@ const app = createServer({
 		},
 	},
 	debug: true,
+	onRequest: (req) => {
+		const pathname = new URL(req.request.url).pathname;
+		if (publicRoutes.includes(pathname)) {
+			return true;
+		}
+
+		if (req.headers.get('test') === '1234') {
+			req.state.test = '1234';
+			return true;
+		}
+		return false;
+	},
 });
 
 app.get('/hello', (req, res) => {
 	const user = req.state.authenticate();
 	const db = req.state.db();
 	console.log(req.params.query);
+	console.log(req.state);
 	res.setStatus(400);
 	res.setHeader('custom', 'custom value');
 	return res.send({
