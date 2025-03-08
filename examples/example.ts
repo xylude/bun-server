@@ -29,7 +29,7 @@ const app = createServer({
 			console.log('A socket was connected');
 		},
 		onMessage: (socket, message) => {
-			// 1234 set in the upgrade function. You can sessionize like this or just emit to select clients rather than everyone on the socket using this
+			// 1234 set in the upgrade function. You can sessionize like this
 			console.log(socket.data.userId);
 			console.log('a message was received', message);
 			// string suppport
