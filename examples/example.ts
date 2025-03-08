@@ -44,6 +44,9 @@ const app = createServer({
 		},
 	},
 	debug: true,
+	// allows you to determine whether to process the request internally, if this function 
+	// returns false the user will get a 400 response. Working on making this a little more dev-friendly
+	// by allowing you to respond directly from this function with your own status and message
 	onRequest: (req) => {
 		const pathname = new URL(req.request.url).pathname;
 		if (publicRoutes.includes(pathname)) {
