@@ -32,8 +32,12 @@ const app = createServer({
 			// 1234 set in the upgrade function. You can sessionize like this or just emit to select clients rather than everyone on the socket using this
 			console.log(socket.data.userId);
 			console.log('a message was received', message);
-			// echo back:
-			socket.send(message);
+			// string suppport
+			socket.send(`echo ${message}`);
+			// JSON support
+			socket.send({ message: 'echo', data: message });
+			// Buffer support
+			socket.send(Buffer.from('echo'));
 		},
 		onClose: (socket) => {
 			console.log('socket connection was closed');
@@ -52,6 +56,11 @@ const app = createServer({
 		}
 		return false;
 	},
+});
+
+app.addPublicFolder({
+	serverPath: '/',
+	localPath: './dist',
 });
 
 app.get('/hello', (req, res) => {

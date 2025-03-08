@@ -1,3 +1,4 @@
+import { type ServerWebSocket } from 'bun';
 import {
 	ErrorHandler,
 	BunServer,
@@ -6,6 +7,8 @@ import {
 	ValidMethods,
 	WebSocketConfig,
 	ResponseHandler,
+	PublicFolderConfig,
+	ModifiedServerWebSocket,
 } from './server-types';
 
 export type * from './server-types';
@@ -64,6 +67,8 @@ export function createServer({
 		TRACE: {},
 	};
 
+	const publicFolders: PublicFolderConfig[] = [];
+
 	function logLine(...args) {
 		if (debug) {
 			console.log(...args);
@@ -73,6 +78,11 @@ export function createServer({
 	function getMatchingPathKey(method: string, path: string): string | null {
 		if (!validateMethod(method)) {
 			return null; //new Response('Method not allowed', { status: 405 })
+		}
+
+		// check if the path is a public folder
+		if (publicFolders?.map(f => f.serverPath).includes(path)) {
+			return path;
 		}
 
 		// if there is an exact match, then we stop looking here
@@ -128,6 +138,23 @@ export function createServer({
 
 	let _errorHandler: ErrorHandler | null = null;
 
+	// makes it a lil easier from a type perspective to send, as well as adding JSON support.
+	function GetModifiedServerWebsocket(ws: ServerWebSocket<unknown>): ModifiedServerWebSocket<unknown> {
+		return {
+			...ws,
+			send: (data: any) => {
+				if (typeof data === 'object') {
+					ws.send(JSON.stringify(data));
+				} else if (typeof data === 'string') {
+					ws.send(data);
+				} else if (data instanceof Buffer) {
+					const bufferSource = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+					ws.send(bufferSource);
+				}
+			}
+		}
+	}
+
 	const publicAPI: BunServer = {
 		get: function (path: string, handler: HandlerFunc) {
 			registeredMethods.GET[path] = handler;
@@ -147,13 +174,24 @@ export function createServer({
 		onError: function (errorHandler: ErrorHandler) {
 			_errorHandler = errorHandler;
 		},
+		addPublicFolder: function (config: PublicFolderConfig) {
+			publicFolders.push(config);
+		},
 		start: () => {
 			return Bun.serve({
 				port,
 				websocket: {
 					message: (ws, message) => {
 						if (webSocket?.onMessage) {
-							webSocket?.onMessage(ws, message);
+							let obj;
+							if (typeof message === 'string') {
+								try {
+									obj = JSON.parse(message);
+								} catch (e) {
+									obj = message;
+								}
+							}
+							webSocket?.onMessage(GetModifiedServerWebsocket(ws), obj || message);
 						}
 					},
 					open: async (ws) => {
@@ -291,11 +329,11 @@ export function createServer({
 											const isObj = typeof data !== 'string';
 											const response = isObj
 												? Response.json(data, {
-														status,
-													})
+													status,
+												})
 												: new Response(data, {
-														status,
-													});
+													status,
+												});
 											const typeHeader = isObj
 												? 'application/json'
 												: 'text/html';

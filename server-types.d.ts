@@ -9,9 +9,13 @@ export type WebSocketConnectedHandler = (
 	ws: ServerWebSocket<any>
 ) => void | Promise<void> | null;
 
+interface ModifiedServerWebSocket<T> extends Omit<ServerWebSocket<T>, "send"> {
+	send: (message: string | Buffer | Record<string, any>) => void
+}
+
 export type WebSocketMessageHandler = (
-	ws: ServerWebSocket<any>,
-	message: string | Buffer
+	ws: ModifiedServerWebSocket<any>,
+	message: string | Buffer | Record<string, any>
 ) => void | Promise<void> | null;
 
 export type Handler = {
@@ -64,5 +68,11 @@ export type BunServer = {
 	delete: (path: string, handler: HandlerFunc) => void;
 	patch: (path: string, handler: HandlerFunc) => void;
 	onError: (errorHandler: ErrorHandler) => void;
+	addPublicFolder: (config: PublicFolderConfig) => void;
 	start: () => Server;
 };
+
+export type PublicFolderConfig = {
+	localPath: string;
+	serverPath: string;
+}
