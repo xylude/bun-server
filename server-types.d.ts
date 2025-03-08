@@ -75,4 +75,5 @@ export type BunServer = {
 export type PublicFolderConfig = {
 	localPath: string;
 	serverPath: string;
+	defaultFile?: string;
 }

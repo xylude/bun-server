@@ -80,11 +80,6 @@ export function createServer({
 			return null; //new Response('Method not allowed', { status: 405 })
 		}
 
-		// check if the path is a public folder
-		if (publicFolders?.map(f => f.serverPath).includes(path)) {
-			return path;
-		}
-
 		// if there is an exact match, then we stop looking here
 		if (registeredMethods[method][path]) {
 			return path;
@@ -155,6 +150,13 @@ export function createServer({
 		}
 	}
 
+	function fileHandler(path: string): HandlerFunc {
+		// todo
+		return async (req, res) => {
+			return res.send('file handler');
+		}
+	}
+
 	const publicAPI: BunServer = {
 		get: function (path: string, handler: HandlerFunc) {
 			registeredMethods.GET[path] = handler;
@@ -175,7 +177,15 @@ export function createServer({
 			_errorHandler = errorHandler;
 		},
 		addPublicFolder: function (config: PublicFolderConfig) {
-			publicFolders.push(config);
+			if (!config.defaultFile) {
+				config.defaultFile = 'index.html';
+			}
+			// add files in public folder to path indexes
+			// for each file in public folder, add a handler for the path
+			// don't forget to recurse through subdirectories!
+			// add jsdoc warning to let user know that this will override any existing handlers regardless of where it's called.
+			// maybe also warn that we are indexing at the point this is called so if you add more files to the public 
+			// folder after this is called, they won't be indexed unless I add .reindexPublicFolders() or something
 		},
 		start: () => {
 			return Bun.serve({
@@ -183,7 +193,7 @@ export function createServer({
 				websocket: {
 					message: (ws, message) => {
 						if (webSocket?.onMessage) {
-							let obj;
+							let obj: string | undefined;
 							if (typeof message === 'string') {
 								try {
 									obj = JSON.parse(message);
