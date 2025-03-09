@@ -51,6 +51,7 @@ export type RequestHandler = {
 	};
 	headers: Headers;
 	state: Record<string, any>;
+	pathname: string;
 };
 
 export type ErrorHandler = (err: any) => Response;

@@ -87,43 +87,37 @@ export function createServer({
 	}
 
 	function getMatchingPathKey(method: string, path: string): string | null {
-		if (!validateMethod(method)) {
-			return null; //new Response('Method not allowed', { status: 405 })
+		if (!validateMethod(method)) return null;
+
+		// Exact match
+		if (registeredMethods[method][path]) return path;
+
+		// Parameterized match (e.g., /foo/:id)
+		const keys = Object.keys(registeredMethods[method]).filter(k =>
+			k.split('/').some(el => el.startsWith(':'))
+		);
+
+		const parts = path.split('/').filter(p => p);
+		for (const key of keys) {
+			const keyParts = key.split('/').filter(p => p);
+			if (keyParts.length !== parts.length) continue;
+
+			if (keyParts.every((kp, idx) => kp.startsWith(':') || kp === parts[idx])) {
+				return key;
+			}
 		}
 
-		// if there is an exact match, then we stop looking here
-		if (registeredMethods[method][path]) {
-			return path;
-		} else {
-			// search for param matches
-			const keys = Object.keys(registeredMethods[method]).filter((k) => {
-				return k.split('/').some((el) => el.startsWith(':'));
-			});
-
-			const parts = path.split('/').filter((p) => p);
-
-			for (const key of keys) {
-				const keyParts = key.split('/').filter((p) => p);
-				if (keyParts.length !== parts.length) {
-					continue;
-				} else {
-					if (
-						keyParts.every((kp, idx) => {
-							if (kp.startsWith(':')) {
-								return true;
-							} else {
-								return kp === parts[idx];
-							}
-						})
-					) {
-						return key;
-					}
-				}
+		// Wildcard support (e.g., /foo/* should match /foo/bar/baz)
+		const wildcardKeys = Object.keys(registeredMethods[method]).filter(k => k.endsWith('/*'));
+		for (const wildcardKey of wildcardKeys) {
+			if (path.startsWith(wildcardKey.replace('/*', ''))) {
+				return wildcardKey;
 			}
 		}
 
 		return null;
 	}
+
 
 	function getParamsFromPath(pathKey: string, path: string) {
 		return pathKey
@@ -250,6 +244,7 @@ export function createServer({
 								path: getParamsFromPath(pathKey, path),
 							},
 							headers: request.headers,
+							pathname: new URL(request.url).pathname,
 							state,
 						};
 						logLine(method, path);

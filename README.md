@@ -88,11 +88,13 @@ server.patch("/route", (req, res) => { ... });
 server.delete("/route", (req, res) => { ... });
 server.options("/route", (req, res) => { ... });
 server.head("/route", (req, res) => { ... });
+server.get('/route/:id', (req, res) => { ... });
+server.get('/route/*', (req, res) => { ... });
 ```
 
 Each handler receives:
 
-- `req`: Request object containing `params`, `headers`, `state`, and `request`.
+- `req`: Request object containing `params`, `headers`, `state`, `pathname`, and `request`.
 - `res`: Response object with `send()`, `setStatus()`, and `setHeader()`.
 
 #### Example:
@@ -100,6 +102,27 @@ Each handler receives:
 ```ts
 server.get('/users/:id', (req, res) => {
 	res.send({ userId: req.params.path.id });
+});
+```
+
+There is a hierarchy of matching params and wildcards:
+
+- Exact match first (`/route/test`)
+- Parameter match second (`/route/:param`)
+- Wildcard match last (`/route/*`)
+
+For example if you were to perform a GET request on `/route/test`, then the handler for `/route/test` would be called. If you
+called `/route/foo`, it would go to the parameter match. Finally, if you were to call `/route/foo/bar`, the wildcard handler would be
+executed. If the wildcard handler is called, you will need to parse the path yourself:
+
+```ts
+server.get('/route/*', (req, res) => {
+	const { pathname } = req;
+	const parts = pathname.split('/');
+
+	// do something with parts
+
+	return res.send('done!');
 });
 ```
 
