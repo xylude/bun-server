@@ -1,112 +1,167 @@
 # Bun Server
 
-This is a pretty small and lightweight abstraction from the built-in Bun webserver. Currently, it handles routing and websockets (what I need for my own purposes right now).
+A lightweight and flexible HTTP & WebSocket server built with [Bun](https://bun.sh/). This server provides an Express-like API for handling HTTP requests, managing WebSockets, and serving static files with minimal dependencies.
 
-You can enable CORS headers by passing them into the `globalHeaders` property of the createServer function.
+## Features
 
-If you'd like state that's available for any request objects, you can add it to the `state` property.
+- **Express-like API**: Define routes with `get`, `post`, `put`, `delete`, and more.
+- **WebSocket Support**: Easily manage WebSocket connections with custom handlers.
+- **Middleware-like Request Validation**: Hook into requests before they hit your route handlers.
+- **Static File Serving**: Serve files from a public directory with minimal setup.
+- **Custom Error Handling**: Define custom responses for errors across the server.
+- **Built-in JSON & Form Parsing**: Automatically parses `application/json`, `x-www-form-urlencoded`, and `multipart/form-data` requests.
+- **Global State Management**: Define global server state variables accessible in request handlers.
+- **Lightweight & Fast**: Runs efficiently with minimal overhead.
 
-### The request object:
+## Installation
 
-**request:** The original request object that was passed into the native Bun server.
+```sh
+bun add @nex-app/bun-server
+```
 
-**params:** Contains the following - query: an object containing the key/value pairs of the querystring. - body: either an object or string of the JSON request or an object containing a single property `text` containing the plain text of the request body - path: an object containing the key/value pairs of the path variables eg. `/foo/:bar` will return { bar: 'whatever bar was' }`
+## Quick Start
 
-**state:** Anything you have set in the state object upon server creation. I believe this is currently mutable so be careful if you are assigning
-values here.
+```ts
+import { createServer } from '@nex-app/bun-server';
 
-### The response object:
-
-**setStatus(status: number):** Sets the HTTP status code to respond with
-
-**setHeader(k: string, v:string):** Sets a header for the response
-
-**send(responseTextOrObject: string):** Send the response to the client.
-
-The `res.send()` method will automatically send the response as JSON if you pass an object in.
-
-`req.body` will try to parse the input as an object if the request header content type is application/json.
-
-## Example Usage
-
-```javascript
-import { createServer } from '..';
-
-const app = createServer({
-	port: 3222,
+const server = createServer({
+	port: 3000,
 	globalHeaders: {
 		'Access-Control-Allow-Origin': '*',
 	},
 	state: {
-		authenticate: () => {
-			console.log('authenticate!');
-		},
-		db: () => {
-			console.log('db!');
+		someProp: 'my-global-prop'
+		someFunc: function() {
+			return 'hello!'
 		},
 	},
-	webSocket: {
-		path: '/ws', // localhost:3222/ws from the client
-		onUpgrade: (req) => {
-			console.log(
-				'you can upgrade here, whatever you return will be attached to socket.data'
-			);
-			return {
-				userId: '1234',
-			};
-		},
-		onConnected: (socket) => {
-			console.log('A socket was connected');
-		},
-		onMessage: (socket, message) => {
-			// 1234 set in the upgrade function. You can sessionize like this or just emit to select clients rather than everyone on the socket using this
-			console.log(socket.data.userId);
-			console.log('a message was received', message);
-			// echo back:
-			socket.send(message);
-		},
-		onClose: (socket) => {
-			console.log('socket connection was closed');
-		},
+	onRequest: (req) => {
+		console.log(`${req.request.method} ${req.request.url}`);
+		return true; // Allow request to proceed
 	},
-	debug: true,
 });
 
-app.get('/hello', (req, res) => {
-	const user = req.state.authenticate();
+// an unnessecarily verbose demo
+server.get('/hello', (req, res) => {
+	const user = req.state.someFunc();
 	const db = req.state.db();
 	console.log(req.params.query);
+	console.log(req.state);
 	res.setStatus(400);
 	res.setHeader('custom', 'custom value');
 	return res.send({
 		message: 'Hello World',
+		headers: req.headers['user-agent'],
 	});
 });
 
-app.get('/hello/:id', (req, res) => {
-	return res.send({
-		message: 'Hello World with param',
-		params: req.params,
-	});
-});
+server.start();
+console.log('Server running on http://localhost:3000');
+```
 
-app.get('/hello/:id/configure/:name', (req, res) => {
-	return res.send({
-		message: 'Hello World with param',
-		params: req.params,
-	});
-});
+## API Reference
 
-app.get('/text', (req, res) => {
-	return res.send('text content');
-});
+### `createServer(options)`
 
-app.onError((err) => {
-	console.log('error handler', err.message);
+Creates and configures a new Bun server.
+
+#### Options:
+
+| Option          | Type                                          | Description                                                                                                                                                                |
+| --------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `port`          | `number`                                      | Port for the server to listen on.                                                                                                                                          |
+| `webSocket`     | `WebSocketConfig` (optional)                  | WebSocket configuration.                                                                                                                                                   |
+| `state`         | `Record<string, any>` (optional)              | Global server state object.                                                                                                                                                |
+| `globalHeaders` | `Record<string, any>` (optional)              | Headers applied to all responses.                                                                                                                                          |
+| `debug`         | `boolean` (optional)                          | Enable debugging logs.                                                                                                                                                     |
+| `onRequest`     | `(req: RequestHandler) => boolean` (optional) | Middleware-like request validator. Can be used for authentication or any other thing you may want to do with it. Returning false will send a 400 error back to the client. |
+
+### HTTP Methods
+
+The server provides methods for handling different HTTP requests:
+
+```ts
+server.get("/route", (req, res) => { ... });
+server.post("/route", (req, res) => { ... });
+server.put("/route", (req, res) => { ... });
+server.patch("/route", (req, res) => { ... });
+server.delete("/route", (req, res) => { ... });
+server.options("/route", (req, res) => { ... });
+server.head("/route", (req, res) => { ... });
+```
+
+Each handler receives:
+
+- `req`: Request object containing `params`, `headers`, `state`, and `request`.
+- `res`: Response object with `send()`, `setStatus()`, and `setHeader()`.
+
+#### Example:
+
+```ts
+server.get('/users/:id', (req, res) => {
+	res.send({ userId: req.params.path.id });
+});
+```
+
+### WebSocket Support
+
+To enable WebSockets, pass a `webSocket` config:
+
+```ts
+server = createServer({
+	port: 3000,
+	webSocket: {
+		path: '/ws',
+		onUpgrade: (req) => {
+			console.log('WebSocket upgrade');
+			return { userId: '1234' };
+		},
+		onConnected: (socket) => {
+			console.log('Client connected');
+		},
+		onMessage: (socket, message) => {
+			console.log(socket.data.userId);
+			console.log('Received message', message);
+			socket.send({ echo: message });
+		},
+		onClose: (socket) => console.log('Client disconnected'),
+	},
+});
+```
+
+The websocket config's onUpgrade method will allow you to define custom data that will be
+present in the onMessage function via `socket.data`. This is useful for authentication or carrying
+state across multiple messages.
+
+Currently `socket.data` is mutable, but in future updates I plan to use a state management function to
+perform mutations, similar to how setState works in React.
+
+### Static File Serving
+
+You can serve a folder as a public directory:
+
+```ts
+server.addPublicDirectory('public');
+```
+
+This allows access to files via:
+
+```
+http://localhost:3000/index.html
+http://localhost:3000/styles.css
+```
+
+### Custom Error Handling
+
+Define a global error handler:
+
+```ts
+server.onError((err) => {
+	console.log('Error handler', err.message);
 	return new Response('error', { status: err.status || 500 });
 });
-
-const server = app.start();
-
-console.log('server started', server.url.host);
 ```
+
+## License
+
+MIT

@@ -67,6 +67,7 @@ export type BunServer = {
 	put: (path: string, handler: HandlerFunc) => void;
 	delete: (path: string, handler: HandlerFunc) => void;
 	patch: (path: string, handler: HandlerFunc) => void;
+	options: (path: string, handler: HandlerFunc) => void;
 	onError: (errorHandler: ErrorHandler) => void;
 	addPublicDirectory: (dir: string) => void;
 	start: () => Server;

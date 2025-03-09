@@ -177,6 +177,9 @@ export function createServer({
 		patch: function (path: string, handler: HandlerFunc) {
 			registeredMethods.PATCH[path] = handler;
 		},
+		options: function (path: string, handler: HandlerFunc) {
+			registeredMethods.OPTIONS[path] = handler;
+		},
 		onError: function (errorHandler: ErrorHandler) {
 			_errorHandler = errorHandler;
 		},
@@ -288,7 +291,7 @@ export function createServer({
 						}
 
 						// we know the path is valid so if it's OPTIONS we can send back the globally set headers at the very least for now
-						if (['OPTIONS'].includes(method)) {
+						if (['OPTIONS'].includes(method) && !registeredMethods[method][pathKey]) {
 							const response = new Response(null, {
 								status: 200,
 							});
