@@ -48,23 +48,11 @@ const app = createServer({
 	// returns false the user will get a 400 response. Working on making this a little more dev-friendly
 	// by allowing you to respond directly from this function with your own status and message
 	onRequest: (req) => {
-		const pathname = new URL(req.request.url).pathname;
-		if (publicRoutes.includes(pathname)) {
-			return true;
-		}
-
-		if (req.headers.get('test') === '1234') {
-			req.state.test = '1234';
-			return true;
-		}
-		return false;
+		return true;
 	},
 });
 
-app.addPublicFolder({
-	serverPath: '/',
-	localPath: './dist',
-});
+app.addPublicDirectory('public');
 
 app.get('/hello', (req, res) => {
 	const user = req.state.authenticate();

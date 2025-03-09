@@ -1,3 +1,5 @@
+import path from "path";
+
 import { type ServerWebSocket } from 'bun';
 import {
 	ErrorHandler,
@@ -7,7 +9,6 @@ import {
 	ValidMethods,
 	WebSocketConfig,
 	ResponseHandler,
-	PublicFolderConfig,
 	ModifiedServerWebSocket,
 } from './server-types';
 
@@ -39,6 +40,16 @@ function validateMethod(method: string): method is ValidMethods {
 	].includes(method);
 }
 
+class BunServerError extends Error {
+	public params: Record<string, string> = {};
+	constructor(message: string, public status: number, params?: Record<string, string>) {
+		super(message);
+		if (params) {
+			this.params = params;
+		}
+	}
+}
+
 // todo CORS SUPPORT
 export function createServer({
 	port,
@@ -67,7 +78,7 @@ export function createServer({
 		TRACE: {},
 	};
 
-	const publicFolders: PublicFolderConfig[] = [];
+	const PUBLIC_DIRECTORIES: string[] = [];
 
 	function logLine(...args) {
 		if (debug) {
@@ -150,13 +161,6 @@ export function createServer({
 		}
 	}
 
-	function fileHandler(path: string): HandlerFunc {
-		// todo
-		return async (req, res) => {
-			return res.send('file handler');
-		}
-	}
-
 	const publicAPI: BunServer = {
 		get: function (path: string, handler: HandlerFunc) {
 			registeredMethods.GET[path] = handler;
@@ -176,16 +180,8 @@ export function createServer({
 		onError: function (errorHandler: ErrorHandler) {
 			_errorHandler = errorHandler;
 		},
-		addPublicFolder: function (config: PublicFolderConfig) {
-			if (!config.defaultFile) {
-				config.defaultFile = 'index.html';
-			}
-			// add files in public folder to path indexes
-			// for each file in public folder, add a handler for the path
-			// don't forget to recurse through subdirectories!
-			// add jsdoc warning to let user know that this will override any existing handlers regardless of where it's called.
-			// maybe also warn that we are indexing at the point this is called so if you add more files to the public 
-			// folder after this is called, they won't be indexed unless I add .reindexPublicFolders() or something
+		addPublicDirectory: function (dir: string) {
+			PUBLIC_DIRECTORIES.push(`${process.cwd()}/${dir}`);
 		},
 		start: () => {
 			return Bun.serve({
@@ -222,11 +218,24 @@ export function createServer({
 						const searchParams = url.searchParams;
 						const method = request.method;
 
+						//first try to serve file from public folder
+						if (method === 'GET') {
+							for (const dir of PUBLIC_DIRECTORIES) {
+								const filePath = path === '/' ? '/index.html' : path;
+								const absolutePath = `${dir}${filePath}`;
+								const file = Bun.file(absolutePath);
+
+								logLine('file', [absolutePath]);
+
+								if (await file.exists()) {
+									return new Response(file);
+								}
+							}
+						}
+
 						const pathKey = getMatchingPathKey(method, path);
 						if (!pathKey) {
-							throw Object.assign({}, new Error('Not found'), {
-								status: 404,
-							});
+							throw new BunServerError('Not found', 404);
 						}
 						logLine('pathKey', pathKey);
 
@@ -245,9 +254,7 @@ export function createServer({
 						if (onRequest) {
 							const allow = onRequest(req);
 							if (!allow) {
-								throw Object.assign({}, new Error('Bad Request'), {
-									status: 400,
-								});
+								throw new BunServerError(`Bad Request: onRequest failed to validate "${request.url}"`, 400);
 							}
 						}
 
@@ -257,43 +264,19 @@ export function createServer({
 								if (webSocket.onUpgrade) {
 									const upgradeData = webSocket.onUpgrade(request);
 									if (!upgradeData) {
-										throw Object.assign(
-											{},
-											new Error(
-												'Websocket upgrade error. The onUpgrade function threw.'
-											),
-											{
-												status: 400,
-											}
-										);
+										throw new BunServerError('Websocket upgrade error. The onUpgrade function returned false.', 400);
 									}
 
 									const success = server.upgrade(request, {
 										data: upgradeData,
 									});
 									if (!success) {
-										throw Object.assign(
-											{},
-											new Error(
-												'Websocket upgrade error. Bun threw while trying to upgrade the connection.'
-											),
-											{
-												status: 400,
-											}
-										);
+										throw new BunServerError('Websocket upgrade error. Bun threw while trying to upgrade the connection.', 400);
 									}
 								} else {
 									const success = server.upgrade(request);
 									if (!success) {
-										throw Object.assign(
-											{},
-											new Error(
-												'Websocket upgrade error. Bun threw while trying to upgrade the connection.'
-											),
-											{
-												status: 400,
-											}
-										);
+										throw new BunServerError('Websocket upgrade error. Bun failed to upgrade the connection.', 400);
 									}
 								}
 								return;
@@ -363,23 +346,55 @@ export function createServer({
 									};
 								};
 
+								// this is untested af, chatgpt helped write it so we'll see what happens.
 								if (['POST', 'PUT', 'PATCH'].includes(method)) {
 									try {
-										if (
-											request.headers
-												.get('Content-Type')
-												?.includes('application/json')
-										) {
-											req.params.body = (await request.json()) || {};
-										} else {
-											req.params.body = {
-												text: request.body,
+										// Get Content-Type
+										const contentType = request.headers.get('Content-Type') || '';
+
+										// Initialize body storage
+										let parsedBody = {};
+
+										if (contentType.includes('application/json')) {
+											// Parse JSON body
+											parsedBody = await request.json();
+										} else if (contentType.includes('application/x-www-form-urlencoded')) {
+											// Parse URL-encoded form data
+											const formData = new URLSearchParams(await request.text());
+											parsedBody = Object.fromEntries(formData.entries());
+										} else if (contentType.includes('multipart/form-data')) {
+											// Parse multipart form data
+											const formData = await request.formData();
+											parsedBody = Object.fromEntries([...formData.entries()]);
+										} else if (contentType.includes('application/octet-stream') || contentType.includes('image/') || contentType.includes('video/') || contentType.includes('audio/')) {
+											// Handle binary data (raw buffer)
+											parsedBody = {
+												binary: await request.arrayBuffer(), // Returns an ArrayBuffer
+												contentType
 											};
+										} else {
+											// Default to raw text
+											parsedBody = { text: await request.text() };
 										}
-										return registeredMethods[method][pathKey](req, res());
+
+										// Attach parsed body to request
+										req.params.body = parsedBody;
+
+										// Call the appropriate method handler
+										return await registeredMethods[method][pathKey](req, res());
 									} catch (e) {
-										// try to handle error better
-										logLine(e);
+										// Structured error handling
+										logLine(`Error processing ${method} request to ${pathKey}:`, e);
+
+										// Return a structured error response
+										return new Response(
+											JSON.stringify({
+												error: true,
+												message: e.message || 'Internal Server Error',
+												stack: process.env.NODE_ENV === 'development' ? e.stack : undefined, // Hide stack in production
+											}),
+											{ status: 500, headers: { 'Content-Type': 'application/json' } }
+										);
 									}
 								}
 
@@ -404,8 +419,9 @@ export function createServer({
 							}
 						} else {
 							logLine(404, method, path);
-							throw Object.assign({}, new Error('Not found'), {
-								status: 404,
+							throw new BunServerError('Not found', 404, {
+								url: request.url,
+								method: request.method,
 							});
 						}
 					} catch (e) {

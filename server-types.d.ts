@@ -68,12 +68,6 @@ export type BunServer = {
 	delete: (path: string, handler: HandlerFunc) => void;
 	patch: (path: string, handler: HandlerFunc) => void;
 	onError: (errorHandler: ErrorHandler) => void;
-	addPublicFolder: (config: PublicFolderConfig) => void;
+	addPublicDirectory: (dir: string) => void;
 	start: () => Server;
 };
-
-export type PublicFolderConfig = {
-	localPath: string;
-	serverPath: string;
-	defaultFile?: string;
-}
