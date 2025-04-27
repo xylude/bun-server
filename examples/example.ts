@@ -40,15 +40,14 @@ const app = createServer({
 		},
 	},
 	debug: true,
-	// allows you to determine whether to process the request internally, if this function 
-	// returns false the user will get a 400 response. Working on making this a little more dev-friendly
-	// by allowing you to respond directly from this function with your own status and message
-	onRequest: (req) => {
-		return true;
-	},
 });
 
 app.addPublicDirectory('public');
+
+app.addPreRequestHandler((req) => {
+	req.state.var2 = true;
+	return true;
+});
 
 app.get('/hello', (req, res) => {
 	const test = req.state.var2

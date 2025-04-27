@@ -59,14 +59,12 @@ export function createServer<ProvidedState extends object>({
 	},
 	debug = false,
 	globalHeaders = {},
-	onRequest,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
 	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
-	onRequest?: ((req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>) | Array<(req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>>;
 }): BunServer<ProvidedState> {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc<ProvidedState>>> = {
 		GET: {},
@@ -139,6 +137,7 @@ export function createServer<ProvidedState extends object>({
 	}
 
 	let _errorHandler: ErrorHandler | null = null;
+	const _preRequestHandlers: Array<(req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>> = [];
 
 	// makes it a lil easier from a type perspective to send, as well as adding JSON support.
 	function GetModifiedServerWebsocket(ws: ServerWebSocket<unknown>): ModifiedServerWebSocket<unknown> {
@@ -181,6 +180,9 @@ export function createServer<ProvidedState extends object>({
 		},
 		addPublicDirectory: function (dir: string) {
 			PUBLIC_DIRECTORIES.push(`${process.cwd()}/${dir}`);
+		},
+		addPreRequestHandler: function (handler: (req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>) {
+			_preRequestHandlers.push(handler);
 		},
 		start: () => {
 			return Bun.serve({
@@ -251,9 +253,8 @@ export function createServer<ProvidedState extends object>({
 						};
 						logLine(method, path);
 
-						if (onRequest) {
-							const handlers = Array.isArray(onRequest) ? onRequest : [onRequest];
-							for (const guard of handlers) {
+						if (_preRequestHandlers.length > 0) {
+							for (const guard of _preRequestHandlers) {
 								const result = await guard(req);
 
 								if (result instanceof Response) {

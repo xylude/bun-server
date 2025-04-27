@@ -71,5 +71,6 @@ export type BunServer<StateType> = {
 	options: (path: string, handler: HandlerFunc<StateType>) => void;
 	onError: (errorHandler: ErrorHandler) => void;
 	addPublicDirectory: (dir: string) => void;
+	addPreRequestHandler: (handler: (req: RequestHandler<StateType>) => boolean | Response | Promise<boolean | Response>) => void;
 	start: () => Server;
 };
