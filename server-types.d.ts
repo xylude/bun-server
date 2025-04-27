@@ -72,6 +72,7 @@ export type ResponseHandler = {
 	setHeader: (key: string, value: string) => void;
 	setCookie: (key: string, value: string, options?: CookieOptions) => void;
 	deleteCookie: (key: string, options?: Pick<CookieOptions, "domain" | "path">) => void;
+	redirect: (url: string, statusCode?: number) => Response;
 	send: (data: any) => Response;
 };
 

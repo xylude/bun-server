@@ -363,6 +363,22 @@ export function createServer<ProvidedState extends object>({
 												console.warn('Headers already sent');
 											}
 										},
+										redirect: (location: string, status: number = 302) => {
+											sent = true;
+											const response = new Response(null, {
+												status,
+												headers: {
+													'Location': location,
+													...globalHeaders, // include your global headers
+												},
+											});
+
+											Object.keys(headers).forEach((header) => {
+												response.headers.set(header, headers[header]);
+											});
+
+											return response;
+										},
 										send: (data: any) => {
 											sent = true;
 											const isObj = typeof data !== 'string';
