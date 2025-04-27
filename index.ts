@@ -64,7 +64,7 @@ export function createServer({
 	state?: Record<string, any>;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
-	onRequest?: (req: RequestHandler) => boolean;
+	onRequest?: ((req: RequestHandler) => boolean | Response | Promise<boolean | Response>) | Array<(req: RequestHandler) => boolean | Response | Promise<boolean | Response>>;
 }): BunServer {
 	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
 		GET: {},
@@ -250,9 +250,17 @@ export function createServer({
 						logLine(method, path);
 
 						if (onRequest) {
-							const allow = onRequest(req);
-							if (!allow) {
-								throw new BunServerError(`Bad Request: onRequest failed to validate "${request.url}"`, 400);
+							const handlers = Array.isArray(onRequest) ? onRequest : [onRequest];
+							for (const guard of handlers) {
+								const result = await guard(req);
+
+								if (result instanceof Response) {
+									return result; // <-- if a Response is returned, immediately send it back
+								}
+
+								if (result === false) {
+									throw new BunServerError(`Bad Request: onRequest failed to validate "${request.url}"`, 400);
+								}
 							}
 						}
 
