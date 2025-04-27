@@ -7,14 +7,10 @@ const app = createServer({
 	globalHeaders: {
 		'Access-Control-Allow-Origin': '*',
 	},
-	state: {
-		authenticate: () => {
-			console.log('authenticate!');
-		},
-		db: () => {
-			console.log('db!');
-		},
-	},
+	state: () => ({
+		var1: 'value1' as string,
+		var2: false as boolean,
+	}),
 	webSocket: {
 		path: '/ws', // localhost:3222/ws from the client
 		onUpgrade: (req) => {
@@ -55,8 +51,7 @@ const app = createServer({
 app.addPublicDirectory('public');
 
 app.get('/hello', (req, res) => {
-	const user = req.state.authenticate();
-	const db = req.state.db();
+	const test = req.state.var2
 	console.log(req.params.query);
 	console.log(req.state);
 	res.setStatus(400);

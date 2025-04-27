@@ -51,22 +51,24 @@ class BunServerError extends Error {
 }
 
 // todo CORS SUPPORT
-export function createServer({
+export function createServer<ProvidedState extends object>({
 	port,
 	webSocket,
-	state = {},
+	state = () => {
+		return {} as ProvidedState;
+	},
 	debug = false,
 	globalHeaders = {},
 	onRequest,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
-	state?: Record<string, any>;
+	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
-	onRequest?: ((req: RequestHandler) => boolean | Response | Promise<boolean | Response>) | Array<(req: RequestHandler) => boolean | Response | Promise<boolean | Response>>;
-}): BunServer {
-	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc>> = {
+	onRequest?: ((req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>) | Array<(req: RequestHandler<ProvidedState>) => boolean | Response | Promise<boolean | Response>>;
+}): BunServer<ProvidedState> {
+	const registeredMethods: Record<ValidMethods, Record<string, HandlerFunc<ProvidedState>>> = {
 		GET: {},
 		POST: {},
 		PUT: {},
@@ -155,23 +157,23 @@ export function createServer({
 		}
 	}
 
-	const publicAPI: BunServer = {
-		get: function (path: string, handler: HandlerFunc) {
+	const publicAPI: BunServer<ProvidedState> = {
+		get: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.GET[path] = handler;
 		},
-		post: function (path: string, handler: HandlerFunc) {
+		post: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.POST[path] = handler;
 		},
-		put: function (path: string, handler: HandlerFunc) {
+		put: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.PUT[path] = handler;
 		},
-		delete: function (path: string, handler: HandlerFunc) {
+		delete: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.DELETE[path] = handler;
 		},
-		patch: function (path: string, handler: HandlerFunc) {
+		patch: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.PATCH[path] = handler;
 		},
-		options: function (path: string, handler: HandlerFunc) {
+		options: function (path: string, handler: HandlerFunc<ProvidedState>) {
 			registeredMethods.OPTIONS[path] = handler;
 		},
 		onError: function (errorHandler: ErrorHandler) {
@@ -236,7 +238,7 @@ export function createServer({
 						}
 						logLine('pathKey', pathKey);
 
-						const req: RequestHandler = {
+						const req: RequestHandler<ProvidedState> = {
 							request,
 							params: {
 								query: {},
@@ -245,7 +247,7 @@ export function createServer({
 							},
 							headers: request.headers,
 							pathname: new URL(request.url).pathname,
-							state,
+							state: state(),
 						};
 						logLine(method, path);
 

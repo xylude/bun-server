@@ -1,7 +1,7 @@
 import { Server, ServerWebSocket } from 'bun';
 
-export type HandlerFunc = (
-	req: RequestHandler,
+export type HandlerFunc<StateType> = (
+	req: RequestHandler<StateType>,
 	res: ResponseHandler
 ) => Response | Promise<Response>;
 
@@ -18,9 +18,9 @@ export type WebSocketMessageHandler = (
 	message: string | Buffer | Record<string, any>
 ) => void | Promise<void> | null;
 
-export type Handler = {
+export type Handler<StateType> = {
 	path: string;
-	handler: HandlerFunc;
+	handler: HandlerFunc<StateType>;
 };
 
 type ValidMethods =
@@ -42,7 +42,7 @@ type WebSocketConfig = {
 	path: string;
 };
 
-export type RequestHandler = {
+export type RequestHandler<StateType> = {
 	request: Request;
 	params: {
 		body: Record<string, any>;
@@ -50,7 +50,7 @@ export type RequestHandler = {
 		path: Record<string, string>;
 	};
 	headers: Headers;
-	state: Record<string, any>;
+	state: StateType;
 	pathname: string;
 };
 
@@ -62,13 +62,13 @@ export type ResponseHandler = {
 	send: (data: any) => Response;
 };
 
-export type BunServer = {
-	get: (path: string, handler: HandlerFunc) => void;
-	post: (path: string, handler: HandlerFunc) => void;
-	put: (path: string, handler: HandlerFunc) => void;
-	delete: (path: string, handler: HandlerFunc) => void;
-	patch: (path: string, handler: HandlerFunc) => void;
-	options: (path: string, handler: HandlerFunc) => void;
+export type BunServer<StateType> = {
+	get: (path: string, handler: HandlerFunc<StateType>) => void;
+	post: (path: string, handler: HandlerFunc<StateType>) => void;
+	put: (path: string, handler: HandlerFunc<StateType>) => void;
+	delete: (path: string, handler: HandlerFunc<StateType>) => void;
+	patch: (path: string, handler: HandlerFunc<StateType>) => void;
+	options: (path: string, handler: HandlerFunc<StateType>) => void;
 	onError: (errorHandler: ErrorHandler) => void;
 	addPublicDirectory: (dir: string) => void;
 	start: () => Server;
