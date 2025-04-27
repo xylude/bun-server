@@ -57,10 +57,21 @@ export type RequestHandler<StateType> = {
 
 export type ErrorHandler = (err: any) => Response;
 
+export type CookieOptions = {
+	secure?: boolean;
+	httpOnly?: boolean;
+	sameSite?: 'Strict' | 'Lax' | 'None';
+	domain?: string;
+	path?: string;
+	maxAge?: number;
+	expires?: Date;
+};
+
 export type ResponseHandler = {
 	setStatus: (statusCode: number) => void;
 	setHeader: (key: string, value: string) => void;
-	setCookie: (key: string, value: string) => void;
+	setCookie: (key: string, value: string, options?: CookieOptions) => void;
+	deleteCookie: (key: string, options?: Pick<CookieOptions, "domain" | "path">) => void;
 	send: (data: any) => Response;
 };
 

@@ -10,6 +10,7 @@ import {
 	WebSocketConfig,
 	ResponseHandler,
 	ModifiedServerWebSocket,
+	CookieOptions,
 } from './server-types';
 
 export type * from './server-types';
@@ -244,7 +245,8 @@ export function createServer<ProvidedState extends object>({
 						const cookieHeader = request.headers.get('cookie') || '';
 						const cookies = cookieHeader.split(';').map(v => v.trim()).reduce((acc, cookie) => {
 							const [key, value] = cookie.split('=');
-							acc[key] = decodeURIComponent(value);
+							if (!key) return acc;
+							acc[key] = decodeURIComponent(value || '');
 							return acc;
 						}, {} as Record<string, string>);
 
@@ -329,7 +331,7 @@ export function createServer<ProvidedState extends object>({
 										setStatus: (statusCode: number) => {
 											status = statusCode;
 										},
-										setCookie: (name: string, value: string, options?: { path?: string; maxAge?: number; expires?: Date; httpOnly?: boolean; secure?: boolean; sameSite?: 'Strict' | 'Lax' | 'None'; }) => {
+										setCookie: (name: string, value: string, options?: CookieOptions) => {
 											let cookie = `${name}=${encodeURIComponent(value)}`;
 
 											if (options) {
@@ -339,6 +341,17 @@ export function createServer<ProvidedState extends object>({
 												if (options.httpOnly) cookie += `; HttpOnly`;
 												if (options.secure) cookie += `; Secure`;
 												if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
+												if (options.domain) cookie += `; Domain=${options.domain}`;
+											}
+
+											cookieHeaders.push(cookie);
+										},
+										deleteCookie: (name: string, options?: Pick<CookieOptions, "domain" | "path">) => {
+											let cookie = `${name}=; Max-Age=0`;
+
+											if (options) {
+												if (options.path) cookie += `; Path=${options.path}`;
+												if (options.domain) cookie += `; Domain=${options.domain}`;
 											}
 
 											cookieHeaders.push(cookie);
