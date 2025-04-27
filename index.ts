@@ -240,6 +240,14 @@ export function createServer<ProvidedState extends object>({
 						}
 						logLine('pathKey', pathKey);
 
+						// try and get cookies from the request
+						const cookieHeader = request.headers.get('cookie') || '';
+						const cookies = cookieHeader.split(';').map(v => v.trim()).reduce((acc, cookie) => {
+							const [key, value] = cookie.split('=');
+							acc[key] = decodeURIComponent(value);
+							return acc;
+						}, {} as Record<string, string>);
+
 						const req: RequestHandler<ProvidedState> = {
 							request,
 							params: {
@@ -250,6 +258,7 @@ export function createServer<ProvidedState extends object>({
 							headers: request.headers,
 							pathname: new URL(request.url).pathname,
 							state: state(),
+							cookies,
 						};
 						logLine(method, path);
 
@@ -314,10 +323,25 @@ export function createServer<ProvidedState extends object>({
 									const headers: Record<string, string> = {};
 									let sent = false;
 									let status = 200;
+									const cookieHeaders: string[] = [];
 
 									return {
 										setStatus: (statusCode: number) => {
 											status = statusCode;
+										},
+										setCookie: (name: string, value: string, options?: { path?: string; maxAge?: number; expires?: Date; httpOnly?: boolean; secure?: boolean; sameSite?: 'Strict' | 'Lax' | 'None'; }) => {
+											let cookie = `${name}=${encodeURIComponent(value)}`;
+
+											if (options) {
+												if (options.path) cookie += `; Path=${options.path}`;
+												if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
+												if (options.expires) cookie += `; Expires=${options.expires.toUTCString()}`;
+												if (options.httpOnly) cookie += `; HttpOnly`;
+												if (options.secure) cookie += `; Secure`;
+												if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
+											}
+
+											cookieHeaders.push(cookie);
 										},
 										setHeader: (key: string, value: string) => {
 											if (!sent) {

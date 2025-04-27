@@ -52,6 +52,7 @@ export type RequestHandler<StateType> = {
 	headers: Headers;
 	state: StateType;
 	pathname: string;
+	cookies: Record<string, string>;
 };
 
 export type ErrorHandler = (err: any) => Response;
@@ -59,6 +60,7 @@ export type ErrorHandler = (err: any) => Response;
 export type ResponseHandler = {
 	setStatus: (statusCode: number) => void;
 	setHeader: (key: string, value: string) => void;
+	setCookie: (key: string, value: string) => void;
 	send: (data: any) => Response;
 };
 
