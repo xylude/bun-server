@@ -381,29 +381,39 @@ export function createServer<ProvidedState extends object>({
 										},
 										send: (data: any) => {
 											sent = true;
-											const isObj = typeof data !== 'string';
-											const response = isObj
-												? Response.json(data, {
-													status,
-												})
-												: new Response(data, {
-													status,
-												});
-											const typeHeader = isObj
-												? 'application/json'
-												: 'text/html';
 
-											response.headers.set('Content-Type', typeHeader);
-
-											Object.keys(globalHeaders).forEach((header) => {
-												response.headers.set(header, globalHeaders[header]);
+											let body: BodyInit;
+											const mergedHeaders = new Headers({
+												...globalHeaders,
+												...headers,
 											});
 
-											Object.keys(headers).forEach((header) => {
-												response.headers.set(header, headers[header]);
-											});
+											if (
+												typeof data === 'object'
+												&& !(data instanceof Blob)
+												&& !(data instanceof ArrayBuffer)
+												&& !(data instanceof ReadableStream)
+											) {
+												body = JSON.stringify(data);
+												if (!mergedHeaders.has('Content-Type')) {
+													mergedHeaders.set('Content-Type', 'application/json');
+												}
+											} else if (typeof data === 'string') {
+												body = data;
+												if (!mergedHeaders.has('Content-Type')) {
+													mergedHeaders.set('Content-Type', 'text/html'); // default to HTML for strings
+												}
+											} else {
+												body = data; // Assume binary, stream, or Blob
+												if (!mergedHeaders.has('Content-Type')) {
+													mergedHeaders.set('Content-Type', 'application/octet-stream');
+												}
+											}
 
-											return response;
+											return new Response(body, {
+												status,
+												headers: mergedHeaders,
+											});
 										},
 									};
 								};
