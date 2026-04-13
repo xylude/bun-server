@@ -12,6 +12,7 @@ import type {
 	CookieOptions,
 	PublicDirectoryOptions,
 	MCPConfig,
+	TLSConfig,
 } from './server-types';
 import { createMcpHttpHandler, runMcpStdio } from './mcp';
 
@@ -188,6 +189,7 @@ export function createServer<ProvidedState extends object>({
 	port,
 	webSocket,
 	mcp,
+	tls,
 	state = () => {
 		return {} as ProvidedState;
 	},
@@ -197,6 +199,7 @@ export function createServer<ProvidedState extends object>({
 	port: number;
 	webSocket?: WebSocketConfig;
 	mcp?: MCPConfig;
+	tls?: TLSConfig;
 	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
@@ -486,34 +489,33 @@ export function createServer<ProvidedState extends object>({
 				});
 			}
 
-			return Bun.serve({
-				port,
-				websocket: {
-					message: (ws, message) => {
-						if (webSocket?.onMessage) {
-							let obj: string | undefined;
-							if (typeof message === 'string') {
-								try {
-									obj = JSON.parse(message);
-								} catch (e) {
-									obj = message;
-								}
+			const websocketConfig = {
+				message: (ws: any, message: any) => {
+					if (webSocket?.onMessage) {
+						let obj: string | undefined;
+						if (typeof message === 'string') {
+							try {
+								obj = JSON.parse(message);
+							} catch (e) {
+								obj = message;
 							}
-							webSocket?.onMessage(GetModifiedServerWebsocket(ws), obj || message);
 						}
-					},
-					open: async (ws) => {
-						if (webSocket?.onConnected) {
-							webSocket?.onConnected(ws);
-						}
-					},
-					close: (ws) => {
-						if (webSocket?.onClose) {
-							webSocket?.onClose(ws);
-						}
-					},
+						webSocket?.onMessage(GetModifiedServerWebsocket(ws), obj || message);
+					}
 				},
-				async fetch(request, server) {
+				open: async (ws: any) => {
+					if (webSocket?.onConnected) {
+						webSocket?.onConnected(ws);
+					}
+				},
+				close: (ws: any) => {
+					if (webSocket?.onClose) {
+						webSocket?.onClose(ws);
+					}
+				},
+			};
+
+			const fetchHandler = async (request: Request, server: any) => {
 					try {
 						const url = new URL(request.url);
 						const path = url.pathname;
@@ -896,8 +898,32 @@ export function createServer<ProvidedState extends object>({
 							return new Response('Internal server error', { status: 500 });
 						}
 					}
-				},
-			});
+				};
+
+				if (tls) {
+					Bun.serve({
+						port,
+						websocket: websocketConfig,
+						fetch: fetchHandler,
+					});
+					return Bun.serve({
+						port: tls.httpsPort,
+						websocket: websocketConfig,
+						fetch: fetchHandler,
+						tls: {
+							key: Bun.file(tls.keyFile),
+							cert: Bun.file(tls.certFile),
+							...(tls.caFile ? { ca: Bun.file(tls.caFile) } : {}),
+							...(tls.passphrase ? { passphrase: tls.passphrase } : {}),
+						},
+					});
+				}
+
+				return Bun.serve({
+					port,
+					websocket: websocketConfig,
+					fetch: fetchHandler,
+				});
 		},
 	};
 

@@ -237,6 +237,19 @@ export type MCPConfig = {
 	serverInfo?: { name: string; version: string };
 };
 
+export type TLSConfig = {
+	/** Path to the TLS private key file (PEM format). */
+	keyFile: string;
+	/** Path to the TLS certificate file (PEM format). */
+	certFile: string;
+	/** Path to the CA certificate file (PEM format). Optional. */
+	caFile?: string;
+	/** Passphrase for an encrypted private key. Optional. */
+	passphrase?: string;
+	/** Port to serve HTTPS on. */
+	httpsPort: number;
+};
+
 export type BunServer<StateType> = {
 	get: (path: string, handler: HandlerFunc<StateType>) => void;
 	post: (path: string, handler: HandlerFunc<StateType>) => void;
