@@ -50,8 +50,7 @@ app.addPreRequestHandler((req) => {
 });
 
 app.get('/hello', (req, res) => {
-	const test = req.state.var2
-	console.log(req.params.query);
+	console.log(req.getQuery());
 	console.log(req.state);
 	res.setStatus(400);
 	res.setHeader('custom', 'custom value');
@@ -64,14 +63,14 @@ app.get('/hello', (req, res) => {
 app.get('/hello/:id', (req, res) => {
 	return res.send({
 		message: 'Hello World with param',
-		params: req.params,
+		params: req.getParams(),
 	});
 });
 
 app.get('/hello/:id/configure/:name', (req, res) => {
 	return res.send({
 		message: 'Hello World with param',
-		params: req.params,
+		params: req.getParams(),
 	});
 });
 
