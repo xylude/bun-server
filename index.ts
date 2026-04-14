@@ -195,6 +195,7 @@ export function createServer<ProvidedState extends object>({
 	},
 	debug = false,
 	globalHeaders = {},
+	idleTimeout,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
@@ -203,6 +204,7 @@ export function createServer<ProvidedState extends object>({
 	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
+	idleTimeout?: number;
 }): BunServer<ProvidedState> {
 	const registeredMethods: Record<
 		ValidMethods,
@@ -905,6 +907,7 @@ export function createServer<ProvidedState extends object>({
 						port,
 						websocket: websocketConfig,
 						fetch: fetchHandler,
+						...(idleTimeout !== undefined ? { idleTimeout } : {}),
 					});
 					return Bun.serve({
 						port: tls.httpsPort,
@@ -916,6 +919,7 @@ export function createServer<ProvidedState extends object>({
 							...(tls.caFile ? { ca: Bun.file(tls.caFile) } : {}),
 							...(tls.passphrase ? { passphrase: tls.passphrase } : {}),
 						},
+						...(idleTimeout !== undefined ? { idleTimeout } : {}),
 					});
 				}
 
@@ -923,6 +927,7 @@ export function createServer<ProvidedState extends object>({
 					port,
 					websocket: websocketConfig,
 					fetch: fetchHandler,
+					...(idleTimeout !== undefined ? { idleTimeout } : {}),
 				});
 		},
 	};
