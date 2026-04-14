@@ -41,7 +41,7 @@ A lightweight Express-like HTTP server for [Bun](https://bun.sh/) with WebSocket
 ## Installation
 
 ```sh
-bun add @xylude/bun-server
+bun add @xylude/bun-server@github:xylude/bun-server
 ```
 
 ---
@@ -54,7 +54,7 @@ import { createServer } from '@xylude/bun-server';
 const app = createServer({ port: 3000 });
 
 app.get('/hello', (req, res) => {
-  return res.send({ message: 'Hello, world!' });
+	return res.send({ message: 'Hello, world!' });
 });
 
 app.start();
@@ -79,13 +79,13 @@ const app = createServer({
 });
 ```
 
-| Option          | Type                   | Default | Description                                                   |
-|-----------------|------------------------|---------|---------------------------------------------------------------|
-| `port`          | `number`               | —       | Port to listen on                                             |
-| `globalHeaders` | `Record<string, any>`  | `{}`    | Headers added to every response                               |
-| `state`         | `() => YourStateType`  | `{}`    | Factory function called once per request to produce state     |
-| `webSocket`     | `WebSocketConfig`      | —       | WebSocket configuration (see [WebSockets](#websockets))       |
-| `debug`         | `boolean`              | `false` | Log routing and request info to the console                   |
+| Option          | Type                  | Default | Description                                               |
+| --------------- | --------------------- | ------- | --------------------------------------------------------- |
+| `port`          | `number`              | —       | Port to listen on                                         |
+| `globalHeaders` | `Record<string, any>` | `{}`    | Headers added to every response                           |
+| `state`         | `() => YourStateType` | `{}`    | Factory function called once per request to produce state |
+| `webSocket`     | `WebSocketConfig`     | —       | WebSocket configuration (see [WebSockets](#websockets))   |
+| `debug`         | `boolean`             | `false` | Log routing and request info to the console               |
 
 > **State is a factory function.** It's called fresh on every request, so each handler gets its own isolated copy. Use this to scope things like database transactions.
 
@@ -107,19 +107,22 @@ app.options('/path', handler);
 ### Route Patterns
 
 **Exact match**
+
 ```ts
-app.get('/users', handler);          // matches /users only
+app.get('/users', handler); // matches /users only
 ```
 
 **Path parameters**
+
 ```ts
-app.get('/users/:id', handler);                    // matches /users/42
-app.get('/users/:id/posts/:postId', handler);      // matches /users/42/posts/7
+app.get('/users/:id', handler); // matches /users/42
+app.get('/users/:id/posts/:postId', handler); // matches /users/42/posts/7
 ```
 
 **Wildcards**
+
 ```ts
-app.get('/files/*', handler);        // matches /files/a, /files/a/b/c, etc.
+app.get('/files/*', handler); // matches /files/a, /files/a/b/c, etc.
 ```
 
 **Match priority:** exact → parameterized → wildcard
@@ -130,14 +133,14 @@ app.get('/files/*', handler);        // matches /files/a, /files/a/b/c, etc.
 
 Every handler receives `(req, res)`. The `req` object contains:
 
-| Property    | Type                     | Description                                      |
-|-------------|--------------------------|--------------------------------------------------|
-| `request`   | `Request`                | The raw Bun `Request` object                     |
-| `headers`   | `Headers`                | Request headers                                  |
-| `pathname`  | `string`                 | URL pathname (e.g. `/users/42`)                  |
-| `cookies`   | `Record<string, string>` | Parsed cookies from the `Cookie` header          |
-| `state`     | `YourStateType`          | State returned by your state factory             |
-| `__raw`     | `{ body, query, path }`  | Raw parsed data — prefer the getters below       |
+| Property   | Type                     | Description                                |
+| ---------- | ------------------------ | ------------------------------------------ |
+| `request`  | `Request`                | The raw Bun `Request` object               |
+| `headers`  | `Headers`                | Request headers                            |
+| `pathname` | `string`                 | URL pathname (e.g. `/users/42`)            |
+| `cookies`  | `Record<string, string>` | Parsed cookies from the `Cookie` header    |
+| `state`    | `YourStateType`          | State returned by your state factory       |
+| `__raw`    | `{ body, query, path }`  | Raw parsed data — prefer the getters below |
 
 ### getBody
 
@@ -148,10 +151,10 @@ Returns the parsed request body. Supports manual validation or any validator fun
 const body = req.getBody();
 
 // Manual validation
-const body = req.getBody<{ name: string; age: number }>(b => {
-  if (typeof b.name !== 'string') throw new Error('name is required');
-  if (typeof b.age !== 'number') throw new Error('age must be a number');
-  return b as { name: string; age: number };
+const body = req.getBody<{ name: string; age: number }>((b) => {
+	if (typeof b.name !== 'string') throw new Error('name is required');
+	if (typeof b.age !== 'number') throw new Error('age must be a number');
+	return b as { name: string; age: number };
 });
 
 // Zod
@@ -162,13 +165,13 @@ const body = req.getBody(Schema.parse);
 
 Body parsing is automatic based on `Content-Type`:
 
-| Content-Type                      | Parsed as                                |
-|-----------------------------------|------------------------------------------|
-| `application/json`                | Object                                   |
-| `application/x-www-form-urlencoded` | Object                                 |
-| `multipart/form-data`             | Object (values may be `File` instances)  |
+| Content-Type                                                | Parsed as                                      |
+| ----------------------------------------------------------- | ---------------------------------------------- |
+| `application/json`                                          | Object                                         |
+| `application/x-www-form-urlencoded`                         | Object                                         |
+| `multipart/form-data`                                       | Object (values may be `File` instances)        |
 | `application/octet-stream`, `image/*`, `video/*`, `audio/*` | `{ binary: ArrayBuffer, contentType: string }` |
-| anything else                     | `{ text: string }`                       |
+| anything else                                               | `{ text: string }`                             |
 
 ### getQuery
 
@@ -180,15 +183,15 @@ const query = req.getQuery();
 // { search: 'bun', page: '2', tag: ['news', 'tech'] }
 
 // Manual validation
-const query = req.getQuery<{ search: string }>(q => {
-  if (typeof q.search !== 'string') throw new Error('search is required');
-  return q as { search: string };
+const query = req.getQuery<{ search: string }>((q) => {
+	if (typeof q.search !== 'string') throw new Error('search is required');
+	return q as { search: string };
 });
 
 // Zod
 const QuerySchema = z.object({
-  search: z.string(),
-  page: z.coerce.number().default(1),
+	search: z.string(),
+	page: z.coerce.number().default(1),
 });
 const query = req.getQuery(QuerySchema.parse);
 ```
@@ -206,9 +209,9 @@ const params = req.getParams();
 // { id: '42', postId: '7' }
 
 // Manual validation
-const params = req.getParams<{ id: string }>(p => {
-  if (!p.id) throw new Error('id required');
-  return p as { id: string };
+const params = req.getParams<{ id: string }>((p) => {
+	if (!p.id) throw new Error('id required');
+	return p as { id: string };
 });
 
 // Zod
@@ -223,9 +226,9 @@ Cookies from the `Cookie` header are pre-parsed into a plain object:
 
 ```ts
 app.get('/profile', (req, res) => {
-  const sessionId = req.cookies['session_id'];
-  if (!sessionId) return res.send('no session');
-  return res.send({ sessionId });
+	const sessionId = req.cookies['session_id'];
+	if (!sessionId) return res.send('no session');
+	return res.send({ sessionId });
 });
 ```
 
@@ -242,7 +245,7 @@ State is typed via the generic parameter on `createServer`. See [TypeScript](#ty
 
 ```ts
 app.get('/status', (req, res) => {
-  return res.send({ uptime: Date.now() - req.state.startedAt });
+	return res.send({ uptime: Date.now() - req.state.startedAt });
 });
 ```
 
@@ -289,11 +292,11 @@ return res.send({ ok: true });
 ```ts
 // Set a cookie
 res.setCookie('session_id', token, {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'Lax',
-  maxAge: 60 * 60 * 24 * 7, // 1 week in seconds
-  path: '/',
+	httpOnly: true,
+	secure: true,
+	sameSite: 'Lax',
+	maxAge: 60 * 60 * 24 * 7, // 1 week in seconds
+	path: '/',
 });
 return res.send({ ok: true });
 
@@ -304,21 +307,21 @@ return res.send({ ok: true });
 
 **CookieOptions:**
 
-| Option     | Type                         | Description                         |
-|------------|------------------------------|-------------------------------------|
-| `httpOnly` | `boolean`                    | Inaccessible to JavaScript          |
-| `secure`   | `boolean`                    | HTTPS only                          |
-| `sameSite` | `'Strict' \| 'Lax' \| 'None'` | Cross-site policy                   |
-| `maxAge`   | `number`                     | Max age in seconds                  |
-| `expires`  | `Date`                       | Expiry date                         |
-| `domain`   | `string`                     | Cookie domain                       |
-| `path`     | `string`                     | Cookie path                         |
+| Option     | Type                          | Description                |
+| ---------- | ----------------------------- | -------------------------- |
+| `httpOnly` | `boolean`                     | Inaccessible to JavaScript |
+| `secure`   | `boolean`                     | HTTPS only                 |
+| `sameSite` | `'Strict' \| 'Lax' \| 'None'` | Cross-site policy          |
+| `maxAge`   | `number`                      | Max age in seconds         |
+| `expires`  | `Date`                        | Expiry date                |
+| `domain`   | `string`                      | Cookie domain              |
+| `path`     | `string`                      | Cookie path                |
 
 ### redirect
 
 ```ts
-return res.redirect('/login');              // 302 by default
-return res.redirect('/dashboard', 301);    // permanent redirect
+return res.redirect('/login'); // 302 by default
+return res.redirect('/dashboard', 301); // permanent redirect
 ```
 
 Cookies and custom headers set before `redirect()` are included in the redirect response.
@@ -331,34 +334,34 @@ Pre-request handlers run before every route handler. They're useful for authenti
 
 ```ts
 app.addPreRequestHandler((req) => {
-  // Return true to allow the request through
-  return true;
+	// Return true to allow the request through
+	return true;
 });
 
 // Return false to reject with a 400
 app.addPreRequestHandler((req) => {
-  const token = req.headers.get('Authorization');
-  return token !== null;
+	const token = req.headers.get('Authorization');
+	return token !== null;
 });
 
 // Return a Response to short-circuit (e.g. 401)
 app.addPreRequestHandler((req) => {
-  const token = req.cookies['session'];
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  return true;
+	const token = req.cookies['session'];
+	if (!token) {
+		return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+			status: 401,
+			headers: { 'Content-Type': 'application/json' },
+		});
+	}
+	return true;
 });
 ```
 
-| Return value | Behavior                              |
-|--------------|---------------------------------------|
-| `true`       | Continue to next handler / route      |
-| `false`      | Reject with 400                       |
-| `Response`   | Send that response immediately        |
+| Return value | Behavior                         |
+| ------------ | -------------------------------- |
+| `true`       | Continue to next handler / route |
+| `false`      | Reject with 400                  |
+| `Response`   | Send that response immediately   |
 
 ---
 
@@ -369,6 +372,7 @@ app.addPublicDirectory('./public');
 ```
 
 Files are served securely by default:
+
 - Path traversal attempts are blocked
 - Sensitive files (`.env`, `.git/`, lock files, etc.) are blocked by default
 - Secure headers are added automatically (`X-Content-Type-Options`, `X-Frame-Options`, CSP, HSTS, etc.)
@@ -401,23 +405,26 @@ Both modes can be used simultaneously — the server checks priority directories
 ### Security
 
 **Custom block patterns:**
+
 ```ts
 app.addPublicDirectory('./public', {
-  blockPatterns: ['.env', '.git/', 'secrets/'],
+	blockPatterns: ['.env', '.git/', 'secrets/'],
 });
 ```
 
 **Disable default block list** (not recommended):
+
 ```ts
 app.addPublicDirectory('./public', { allowAllFiles: true });
 ```
 
 **Custom headers per directory:**
+
 ```ts
 app.addPublicDirectory('./assets', {
-  headers: {
-    'Cache-Control': 'public, max-age=31536000, immutable',
-  },
+	headers: {
+		'Cache-Control': 'public, max-age=31536000, immutable',
+	},
 });
 ```
 
@@ -425,13 +432,13 @@ app.addPublicDirectory('./assets', {
 
 **PublicDirectoryOptions:**
 
-| Option          | Type                       | Default                  | Description                                         |
-|-----------------|----------------------------|--------------------------|-----------------------------------------------------|
-| `fallbackMode`  | `'priority' \| 'catchall'` | `'priority'`             | When to serve this directory relative to routes     |
-| `spaMode`       | `boolean`                  | `false`                  | Serve `index.html` for unmatched paths              |
-| `headers`       | `Record<string, string>`   | `{}`                     | Additional headers for files from this directory    |
-| `blockPatterns` | `string[]`                 | (sensitive file defaults) | Patterns to block from being served                |
-| `allowAllFiles` | `boolean`                  | `false`                  | Disable block pattern protection entirely           |
+| Option          | Type                       | Default                   | Description                                      |
+| --------------- | -------------------------- | ------------------------- | ------------------------------------------------ |
+| `fallbackMode`  | `'priority' \| 'catchall'` | `'priority'`              | When to serve this directory relative to routes  |
+| `spaMode`       | `boolean`                  | `false`                   | Serve `index.html` for unmatched paths           |
+| `headers`       | `Record<string, string>`   | `{}`                      | Additional headers for files from this directory |
+| `blockPatterns` | `string[]`                 | (sensitive file defaults) | Patterns to block from being served              |
+| `allowAllFiles` | `boolean`                  | `false`                   | Disable block pattern protection entirely        |
 
 ---
 
@@ -439,44 +446,44 @@ app.addPublicDirectory('./assets', {
 
 ```ts
 const app = createServer({
-  port: 3000,
-  webSocket: {
-    path: '/ws',
+	port: 3000,
+	webSocket: {
+		path: '/ws',
 
-    // Called during the HTTP → WS upgrade.
-    // Whatever you return is attached to socket.data.
-    onUpgrade: (request) => {
-      const token = new URL(request.url).searchParams.get('token');
-      if (!token) return false; // reject the upgrade
-      return { userId: verifyToken(token) };
-    },
+		// Called during the HTTP → WS upgrade.
+		// Whatever you return is attached to socket.data.
+		onUpgrade: (request) => {
+			const token = new URL(request.url).searchParams.get('token');
+			if (!token) return false; // reject the upgrade
+			return { userId: verifyToken(token) };
+		},
 
-    onConnected: (socket) => {
-      console.log('connected', socket.data.userId);
-    },
+		onConnected: (socket) => {
+			console.log('connected', socket.data.userId);
+		},
 
-    onMessage: (socket, message) => {
-      // message is already parsed from JSON if the client sent JSON
-      console.log('message from', socket.data.userId, message);
+		onMessage: (socket, message) => {
+			// message is already parsed from JSON if the client sent JSON
+			console.log('message from', socket.data.userId, message);
 
-      // send accepts string, object (auto JSON-stringified), or Buffer
-      socket.send({ type: 'echo', data: message });
-    },
+			// send accepts string, object (auto JSON-stringified), or Buffer
+			socket.send({ type: 'echo', data: message });
+		},
 
-    onClose: (socket) => {
-      console.log('disconnected', socket.data.userId);
-    },
-  },
+		onClose: (socket) => {
+			console.log('disconnected', socket.data.userId);
+		},
+	},
 });
 ```
 
-| Option        | Type                                           | Description                                                       |
-|---------------|------------------------------------------------|-------------------------------------------------------------------|
-| `path`        | `string`                                       | URL path that triggers a WebSocket upgrade                        |
+| Option        | Type                                             | Description                                                       |
+| ------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
+| `path`        | `string`                                         | URL path that triggers a WebSocket upgrade                        |
 | `onUpgrade`   | `(req: Request) => false \| Record<string, any>` | Return `false` to reject, or an object to attach as `socket.data` |
-| `onConnected` | `(socket) => void`                             | Called when a client connects                                     |
-| `onMessage`   | `(socket, message) => void`                    | Called on each message; `message` is pre-parsed from JSON         |
-| `onClose`     | `(socket) => void`                             | Called when a client disconnects                                  |
+| `onConnected` | `(socket) => void`                               | Called when a client connects                                     |
+| `onMessage`   | `(socket, message) => void`                      | Called on each message; `message` is pre-parsed from JSON         |
+| `onClose`     | `(socket) => void`                               | Called when a client disconnects                                  |
 
 ---
 
@@ -492,29 +499,29 @@ Pass `mcp` to `createServer`. The server registers a single endpoint (default `/
 import { createServer } from '@xylude/bun-server';
 
 const app = createServer({
-  port: 3000,
-  mcp: {
-    path: '/mcp',       // optional, defaults to '/mcp'
-    mode: 'http',       // optional, defaults to 'http'
-    serverInfo: { name: 'my-server', version: '1.0.0' },
-    tools: [
-      {
-        name: 'get_weather',
-        description: 'Get current weather for a city',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            city: { type: 'string', description: 'City name' },
-          },
-          required: ['city'],
-        },
-        handler: async ({ city }) => {
-          const data = await fetchWeather(city);
-          return `Weather in ${city}: ${data.summary}`;
-        },
-      },
-    ],
-  },
+	port: 3000,
+	mcp: {
+		path: '/mcp', // optional, defaults to '/mcp'
+		mode: 'http', // optional, defaults to 'http'
+		serverInfo: { name: 'my-server', version: '1.0.0' },
+		tools: [
+			{
+				name: 'get_weather',
+				description: 'Get current weather for a city',
+				inputSchema: {
+					type: 'object',
+					properties: {
+						city: { type: 'string', description: 'City name' },
+					},
+					required: ['city'],
+				},
+				handler: async ({ city }) => {
+					const data = await fetchWeather(city);
+					return `Weather in ${city}: ${data.summary}`;
+				},
+			},
+		],
+	},
 });
 
 app.get('/health', (req, res) => res.send({ ok: true }));
@@ -531,25 +538,25 @@ The HTTP server still starts and your regular routes still work. Both transports
 
 ```ts
 const app = createServer({
-  port: 3000,
-  mcp: {
-    mode: 'stdio',
-    tools: [
-      {
-        name: 'add',
-        description: 'Add two numbers',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            a: { type: 'number' },
-            b: { type: 'number' },
-          },
-          required: ['a', 'b'],
-        },
-        handler: ({ a, b }) => `${a + b}`,
-      },
-    ],
-  },
+	port: 3000,
+	mcp: {
+		mode: 'stdio',
+		tools: [
+			{
+				name: 'add',
+				description: 'Add two numbers',
+				inputSchema: {
+					type: 'object',
+					properties: {
+						a: { type: 'number' },
+						b: { type: 'number' },
+					},
+					required: ['a', 'b'],
+				},
+				handler: ({ a, b }) => `${a + b}`,
+			},
+		],
+	},
 });
 
 app.start();
@@ -559,12 +566,12 @@ To use with Claude Desktop, add to `claude_desktop_config.json`:
 
 ```json
 {
-  "mcpServers": {
-    "my-server": {
-      "command": "bun",
-      "args": ["run", "/path/to/your/server.ts"]
-    }
-  }
+	"mcpServers": {
+		"my-server": {
+			"command": "bun",
+			"args": ["run", "/path/to/your/server.ts"]
+		}
+	}
 }
 ```
 
@@ -572,11 +579,11 @@ To use with Claude Desktop, add to `claude_desktop_config.json`:
 
 A `handler` receives the tool's arguments as a plain object and can return:
 
-| Return type | How it's sent |
-|---|---|
-| `string` | `{ type: 'text', text: yourString }` |
-| `MCPContent[]` | Sent as-is |
-| `{ content: MCPContent[], isError?: boolean }` | Sent as-is |
+| Return type                                    | How it's sent                        |
+| ---------------------------------------------- | ------------------------------------ |
+| `string`                                       | `{ type: 'text', text: yourString }` |
+| `MCPContent[]`                                 | Sent as-is                           |
+| `{ content: MCPContent[], isError?: boolean }` | Sent as-is                           |
 
 Throwing from a handler is safe — the error message is returned to the client as `{ isError: true }` rather than crashing the server.
 
@@ -601,12 +608,12 @@ handler: async ({ query }) => {
 
 ### MCPConfig
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `mode` | `'http' \| 'stdio'` | `'http'` | Transport to use |
-| `path` | `string` | `'/mcp'` | Endpoint path (HTTP mode only) |
-| `tools` | `MCPToolDefinition[]` | — | Tools to expose |
-| `serverInfo` | `{ name, version }` | `{ name: 'bun-server-mcp', version: '1.0.0' }` | Sent during handshake |
+| Option       | Type                  | Default                                        | Description                    |
+| ------------ | --------------------- | ---------------------------------------------- | ------------------------------ |
+| `mode`       | `'http' \| 'stdio'`   | `'http'`                                       | Transport to use               |
+| `path`       | `string`              | `'/mcp'`                                       | Endpoint path (HTTP mode only) |
+| `tools`      | `MCPToolDefinition[]` | —                                              | Tools to expose                |
+| `serverInfo` | `{ name, version }`   | `{ name: 'bun-server-mcp', version: '1.0.0' }` | Sent during handshake          |
 
 ### MCP Spec Version
 
@@ -625,25 +632,22 @@ Register a global error handler with `onError`. Without one, the server returns 
 
 ```ts
 app.onError((err) => {
-  console.error(err.error);
-  return new Response(
-    JSON.stringify({ error: err.error.message }),
-    {
-      status: err.status || 500,
-      headers: { 'Content-Type': 'application/json' },
-    }
-  );
+	console.error(err.error);
+	return new Response(JSON.stringify({ error: err.error.message }), {
+		status: err.status || 500,
+		headers: { 'Content-Type': 'application/json' },
+	});
 });
 ```
 
 The error object contains:
 
-| Property  | Type      | Description                              |
-|-----------|-----------|------------------------------------------|
-| `error`   | `any`     | The thrown value                         |
-| `method`  | `string`  | HTTP method of the request               |
-| `path`    | `string`  | Full request URL                         |
-| `headers` | `Headers` | Request headers                          |
+| Property  | Type      | Description                                  |
+| --------- | --------- | -------------------------------------------- |
+| `error`   | `any`     | The thrown value                             |
+| `method`  | `string`  | HTTP method of the request                   |
+| `path`    | `string`  | Full request URL                             |
+| `headers` | `Headers` | Request headers                              |
 | `status`  | `number`  | Status from `BunServerError`, or `undefined` |
 
 ### BunServerError
@@ -654,21 +658,21 @@ Throw a `BunServerError` from any route handler to produce a structured error re
 import { createServer, BunServerError } from '@xylude/bun-server';
 
 app.get('/users/:id', (req, res) => {
-  const { id } = req.getParams();
-  const user = db.find(id);
+	const { id } = req.getParams();
+	const user = db.find(id);
 
-  if (!user) {
-    throw new BunServerError('User not found', 404);
-  }
+	if (!user) {
+		throw new BunServerError('User not found', 404);
+	}
 
-  return res.send(user);
+	return res.send(user);
 });
 
 app.onError((err) => {
-  return new Response(
-    JSON.stringify({ error: err.error.message }),
-    { status: err.status || 500, headers: { 'Content-Type': 'application/json' } }
-  );
+	return new Response(JSON.stringify({ error: err.error.message }), {
+		status: err.status || 500,
+		headers: { 'Content-Type': 'application/json' },
+	});
 });
 ```
 
@@ -684,29 +688,29 @@ import { createTestServer } from '@xylude/bun-server';
 const app = createTestServer();
 
 app.get('/hello', (req, res) => {
-  const { name } = req.getQuery<{ name: string }>();
-  return res.send({ message: `Hello, ${name}!` });
+	const { name } = req.getQuery<{ name: string }>();
+	return res.send({ message: `Hello, ${name}!` });
 });
 
 // In your test
 const response = await app.call('/hello', {
-  method: 'GET',
-  query: { name: 'world' },
+	method: 'GET',
+	query: { name: 'world' },
 });
 
-console.log(response.status);  // 200
-console.log(response.body);    // { message: 'Hello, world!' }
+console.log(response.status); // 200
+console.log(response.body); // { message: 'Hello, world!' }
 ```
 
 ### call(path, options)
 
-| Option    | Type                     | Description                         |
-|-----------|--------------------------|-------------------------------------|
-| `method`  | `ValidMethods`           | HTTP method (default: `'GET'`)      |
-| `body`    | `any`                    | Request body (objects → JSON)       |
-| `query`   | `Record<string, string>` | Query string parameters             |
-| `headers` | `Record<string, string>` | Request headers                     |
-| `cookies` | `Record<string, string>` | Cookies to send with the request    |
+| Option    | Type                     | Description                      |
+| --------- | ------------------------ | -------------------------------- |
+| `method`  | `ValidMethods`           | HTTP method (default: `'GET'`)   |
+| `body`    | `any`                    | Request body (objects → JSON)    |
+| `query`   | `Record<string, string>` | Query string parameters          |
+| `headers` | `Record<string, string>` | Request headers                  |
+| `cookies` | `Record<string, string>` | Cookies to send with the request |
 
 ### TestResponse
 
@@ -715,7 +719,7 @@ const { status, headers, cookies, body } = await app.call('/path');
 ```
 
 | Property  | Type                     | Description                         |
-|-----------|--------------------------|-------------------------------------|
+| --------- | ------------------------ | ----------------------------------- |
 | `status`  | `number`                 | HTTP status code                    |
 | `headers` | `Record<string, string>` | Response headers                    |
 | `cookies` | `Record<string, string>` | Parsed `Set-Cookie` headers         |
@@ -728,33 +732,33 @@ import { describe, it, expect } from 'bun:test';
 import { createTestServer, BunServerError } from '@xylude/bun-server';
 
 const app = createTestServer({
-  state: () => ({ user: null as string | null }),
+	state: () => ({ user: null as string | null }),
 });
 
 app.addPreRequestHandler((req) => {
-  const token = req.headers.get('Authorization');
-  if (!token) return new Response('Unauthorized', { status: 401 });
-  req.state.user = token;
-  return true;
+	const token = req.headers.get('Authorization');
+	if (!token) return new Response('Unauthorized', { status: 401 });
+	req.state.user = token;
+	return true;
 });
 
 app.get('/me', (req, res) => {
-  return res.send({ user: req.state.user });
+	return res.send({ user: req.state.user });
 });
 
 describe('GET /me', () => {
-  it('returns 401 without token', async () => {
-    const res = await app.call('/me');
-    expect(res.status).toBe(401);
-  });
+	it('returns 401 without token', async () => {
+		const res = await app.call('/me');
+		expect(res.status).toBe(401);
+	});
 
-  it('returns user when authenticated', async () => {
-    const res = await app.call('/me', {
-      headers: { Authorization: 'Bearer abc123' },
-    });
-    expect(res.status).toBe(200);
-    expect(res.body.user).toBe('Bearer abc123');
-  });
+	it('returns user when authenticated', async () => {
+		const res = await app.call('/me', {
+			headers: { Authorization: 'Bearer abc123' },
+		});
+		expect(res.status).toBe(200);
+		expect(res.body.user).toBe('Bearer abc123');
+	});
 });
 ```
 
@@ -766,22 +770,22 @@ Pass your state type as a generic to get full type inference throughout your han
 
 ```ts
 type AppState = {
-  db: Database;
-  userId: string | null;
+	db: Database;
+	userId: string | null;
 };
 
 const app = createServer<AppState>({
-  port: 3000,
-  state: () => ({
-    db: getDatabase(),
-    userId: null,
-  }),
+	port: 3000,
+	state: () => ({
+		db: getDatabase(),
+		userId: null,
+	}),
 });
 
 app.get('/profile', (req, res) => {
-  // req.state is fully typed as AppState
-  const user = req.state.db.findUser(req.state.userId);
-  return res.send(user);
+	// req.state is fully typed as AppState
+	const user = req.state.db.findUser(req.state.userId);
+	return res.send(user);
 });
 ```
 
@@ -795,25 +799,25 @@ Zod's `.parse` method is directly compatible with all three getters since it tak
 import { z } from 'zod';
 
 const CreateUserBody = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  age: z.coerce.number().int().min(0),
+	name: z.string().min(1),
+	email: z.string().email(),
+	age: z.coerce.number().int().min(0),
 });
 
 const UserQuery = z.object({
-  page: z.coerce.number().default(1),
-  limit: z.coerce.number().default(20),
+	page: z.coerce.number().default(1),
+	limit: z.coerce.number().default(20),
 });
 
 app.post('/users', (req, res) => {
-  const body = req.getBody(CreateUserBody.parse);
-  // body is typed as { name: string; email: string; age: number }
-  return res.send({ created: body });
+	const body = req.getBody(CreateUserBody.parse);
+	// body is typed as { name: string; email: string; age: number }
+	return res.send({ created: body });
 });
 
 app.get('/users', (req, res) => {
-  const { page, limit } = req.getQuery(UserQuery.parse);
-  return res.send({ page, limit });
+	const { page, limit } = req.getQuery(UserQuery.parse);
+	return res.send({ page, limit });
 });
 ```
 
