@@ -683,7 +683,6 @@ export function createServer<ProvidedState extends object>({
 										);
 									}
 
-									// @ts-expect-error: Bun type definitions mismatch
 									const success = server.upgrade(request, {
 										data: upgradeData,
 									});
@@ -694,7 +693,6 @@ export function createServer<ProvidedState extends object>({
 										);
 									}
 								} else {
-									// @ts-expect-error: Bun type definitions mismatch
 									const success = server.upgrade(request);
 									if (!success) {
 										throw new BunServerError(
