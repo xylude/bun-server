@@ -241,6 +241,13 @@ export type MCPConfig = {
 	serverInfo?: { name: string; version: string };
 };
 
+export type WafRule = {
+	/** String prefix (case-insensitive) or RegExp to match against the request pathname. */
+	pattern: string | RegExp;
+	/** Human-readable description of what this rule blocks. */
+	description: string;
+};
+
 export type TLSConfig = {
 	/** Path to the TLS private key file (PEM format). */
 	keyFile: string;

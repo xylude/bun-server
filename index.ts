@@ -15,11 +15,14 @@ import type {
 	TLSConfig,
 } from './server-types';
 import { createMcpHttpHandler, runMcpStdio } from './mcp';
+import { WAF_COMMON_RULES, matchesWafRule } from './waf';
 
 export type * from './server-types';
 export { createTestServer } from './bun-test-server';
 export type { TestRequestOptions, TestResponse } from './bun-test-server';
 export { MCP_PROTOCOL_VERSION } from './mcp';
+export { WAF_COMMON_RULES } from './waf';
+export type { WafRule } from './waf';
 
 /*
 GET: Retrieve data from a server.
@@ -196,6 +199,8 @@ export function createServer<ProvidedState extends object>({
 	debug = false,
 	globalHeaders = {},
 	idleTimeout,
+	enableWaf = false,
+	wafOverrides,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
@@ -205,6 +210,21 @@ export function createServer<ProvidedState extends object>({
 	globalHeaders?: Record<string, any>;
 	debug?: boolean;
 	idleTimeout?: number;
+	/**
+	 * Enable the built-in WAF (Web Application Firewall).
+	 * When true, requests matching known scanner/exploit paths are rejected with 404
+	 * before hitting any route logic. Uses WAF_COMMON_RULES by default.
+	 * @experimental
+	 */
+	enableWaf?: boolean;
+	/**
+	 * Replace the default WAF ruleset entirely. Useful when you want to extend or
+	 * trim the common rules:
+	 * @example
+	 * wafOverrides: [...WAF_COMMON_RULES, { pattern: '/secret', description: 'custom' }]
+	 * @experimental
+	 */
+	wafOverrides?: import('./server-types').WafRule[];
 }): BunServer<ProvidedState> {
 	const registeredMethods: Record<
 		ValidMethods,
@@ -517,6 +537,8 @@ export function createServer<ProvidedState extends object>({
 				},
 			};
 
+			const wafRules = wafOverrides ?? WAF_COMMON_RULES;
+
 			const fetchHandler = async (request: Request, server: any) => {
 					try {
 						const url = new URL(request.url);
@@ -531,6 +553,12 @@ export function createServer<ProvidedState extends object>({
 							`"${searchParams}"`,
 							`"${method}"`
 						);
+
+						// WAF: reject known scanner/exploit paths before any routing
+						if (enableWaf && matchesWafRule(path, wafRules)) {
+							logLine('[WAF] blocked:', path);
+							return new Response(null, { status: 404 });
+						}
 
 						// Handle MCP endpoint before all other routing
 						if (mcpHttpHandler && path === mcpPath) {

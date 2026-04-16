@@ -32,6 +32,7 @@ A lightweight Express-like HTTP server for [Bun](https://bun.sh/) with WebSocket
   - [Stdio Mode](#stdio-mode)
   - [Tool Handlers](#tool-handlers)
   - [MCP Spec Version](#mcp-spec-version)
+- [WAF (Web Application Firewall)](#waf-web-application-firewall)
 - [Error Handling](#error-handling)
 - [Testing](#testing)
 - [TypeScript](#typescript)
@@ -623,6 +624,83 @@ This implementation follows **MCP 2025-03-26** (Streamable HTTP transport). If y
 import { MCP_PROTOCOL_VERSION } from '@xylude/bun-server';
 console.log(MCP_PROTOCOL_VERSION); // '2025-03-26'
 ```
+
+---
+
+## WAF (Web Application Firewall)
+
+> **Experimental.** The built-in WAF is in early development. Rule coverage will expand over time — expect additions in future releases.
+
+Enable the WAF to drop known scanner and exploit probes before they ever touch your routing logic. Matched requests get a bare `404` with no body, giving automated scanners nothing to work with.
+
+```ts
+const app = createServer({
+  port: 3000,
+  enableWaf: true,
+});
+```
+
+The default ruleset (`WAF_COMMON_RULES`) covers:
+
+- WordPress probes (`/wp-admin`, `/xmlrpc.php`, `/wp-config.php`, etc.)
+- PHP files and common PHP admin panels (`/phpmyadmin`, `/phpinfo.php`, etc.)
+- Known web shells (`c99`, `r57`, `b374k`, `wso`, etc.)
+- Sensitive dotfiles and directories (`/.env`, `/.git`, `/.ssh`, `/.aws`, etc.)
+- Java/JVM stack endpoints (`/actuator`, `/jolokia`, `/jmx-console`, Tomcat manager, etc.)
+- Common CI/search service paths probed by scanners (`/jenkins`, `/solr/`, etc.)
+- CGI and path traversal probes
+- Any `.php` file extension (regex)
+- Backup and dump file extensions — `.bak`, `.sql`, `.dump`, etc. (regex)
+
+### Customizing rules
+
+Import `WAF_COMMON_RULES` to use the default set as a base:
+
+```ts
+import { createServer, WAF_COMMON_RULES } from '@xylude/bun-server';
+import type { WafRule } from '@xylude/bun-server';
+
+// Extend: keep all default rules and add your own
+const app = createServer({
+  port: 3000,
+  enableWaf: true,
+  wafOverrides: [
+    ...WAF_COMMON_RULES,
+    { pattern: '/internal', description: 'internal-only path' },
+  ],
+});
+
+// Replace: use only your own rules
+const app = createServer({
+  port: 3000,
+  enableWaf: true,
+  wafOverrides: [
+    { pattern: '/wp-admin', description: 'WordPress probe' },
+    { pattern: /\.php(\?|\/|$)/i, description: 'PHP file probe' },
+  ],
+});
+```
+
+`wafOverrides` replaces the ruleset entirely — spread `WAF_COMMON_RULES` into it if you want to extend rather than replace.
+
+### Rule format
+
+```ts
+type WafRule = {
+  pattern: string | RegExp;
+  description: string;
+};
+```
+
+- **String patterns** match case-insensitively using `startsWith` — `/wp-admin` blocks `/wp-admin`, `/wp-admin/`, `/wp-admin/login.php`, etc.
+- **RegExp patterns** are tested against the lowercased pathname.
+
+### `createServer` options
+
+| Option         | Type        | Default | Description                                                              |
+| -------------- | ----------- | ------- | ------------------------------------------------------------------------ |
+| `enableWaf`    | `boolean`   | `false` | Enable the WAF. Off by default — opt in explicitly.                      |
+| `wafOverrides` | `WafRule[]` | —       | Replace the default ruleset. Spread `WAF_COMMON_RULES` to extend it.     |
 
 ---
 
