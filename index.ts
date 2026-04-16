@@ -540,6 +540,39 @@ export function createServer<ProvidedState extends object>({
 							return new Response('Method Not Allowed', { status: 405 });
 						}
 
+						// Handle WebSocket upgrades before static file serving and route matching.
+						// Must run early — SPA catchall would otherwise intercept the GET and return 200.
+						if (webSocket) {
+							const wsPath = webSocket.path ?? '/ws';
+							if (path === wsPath) {
+								if (webSocket.onUpgrade) {
+									const upgradeData = webSocket.onUpgrade(request);
+									if (!upgradeData) {
+										throw new BunServerError(
+											'Websocket upgrade error. The onUpgrade function returned false.',
+											400
+										);
+									}
+									const success = server.upgrade(request, { data: upgradeData });
+									if (!success) {
+										throw new BunServerError(
+											'Websocket upgrade error. Bun threw while trying to upgrade the connection.',
+											400
+										);
+									}
+								} else {
+									const success = server.upgrade(request);
+									if (!success) {
+										throw new BunServerError(
+											'Websocket upgrade error. Bun failed to upgrade the connection.',
+											400
+										);
+									}
+								}
+								return;
+							}
+						}
+
 						// First try to serve files from priority public directories (for GET requests)
 						if (method === 'GET') {
 							const priorityResponse = await tryServePublicFile(path, PUBLIC_DIRECTORIES);
@@ -668,40 +701,6 @@ export function createServer<ProvidedState extends object>({
 										400
 									);
 								}
-							}
-						}
-
-						// handle websockets:
-						if (webSocket) {
-							if (path === webSocket.path) {
-								if (webSocket.onUpgrade) {
-									const upgradeData = webSocket.onUpgrade(request);
-									if (!upgradeData) {
-										throw new BunServerError(
-											'Websocket upgrade error. The onUpgrade function returned false.',
-											400
-										);
-									}
-
-									const success = server.upgrade(request, {
-										data: upgradeData,
-									});
-									if (!success) {
-										throw new BunServerError(
-											'Websocket upgrade error. Bun threw while trying to upgrade the connection.',
-											400
-										);
-									}
-								} else {
-									const success = server.upgrade(request);
-									if (!success) {
-										throw new BunServerError(
-											'Websocket upgrade error. Bun failed to upgrade the connection.',
-											400
-										);
-									}
-								}
-								return;
 							}
 						}
 

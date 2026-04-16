@@ -40,7 +40,11 @@ export type WebSocketConfig = {
 	onMessage?: WebSocketMessageHandler;
 	onClose?: (ws: ServerWebSocket<any>) => void;
 	onUpgrade?: (req: Request) => boolean | Record<string, any>;
-	path: string;
+	/**
+	 * The path to listen for WebSocket upgrade requests on.
+	 * @default '/ws'
+	 */
+	path?: string;
 };
 
 export type RequestHandler<StateType> = {
