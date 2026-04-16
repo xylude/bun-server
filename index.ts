@@ -409,6 +409,8 @@ export function createServer<ProvidedState extends object>({
 	): ModifiedServerWebSocket<unknown> {
 		return {
 			...ws,
+			// Bun's `data` property is non-enumerable so the spread above doesn't copy it
+			data: ws.data,
 			send: (data: any) => {
 				if (typeof data === 'object') {
 					ws.send(JSON.stringify(data));
