@@ -201,6 +201,7 @@ export function createServer<ProvidedState extends object>({
 	idleTimeout,
 	enableWaf = false,
 	wafOverrides,
+	allowedRedirectHosts,
 }: {
 	port: number;
 	webSocket?: WebSocketConfig;
@@ -225,6 +226,12 @@ export function createServer<ProvidedState extends object>({
 	 * @experimental
 	 */
 	wafOverrides?: import('./server-types').WafRule[];
+	/**
+	 * Allowlist of hostnames that redirect() may send users to.
+	 * Absolute-URL redirects to hosts not in this list are blocked with 403.
+	 * Relative (root-relative) redirects are always allowed.
+	 */
+	allowedRedirectHosts?: string[];
 }): BunServer<ProvidedState> {
 	const registeredMethods: Record<
 		ValidMethods,
@@ -783,6 +790,26 @@ export function createServer<ProvidedState extends object>({
 											}
 										},
 										redirect: (location: string, statusCode: number = 302) => {
+											let isAbsolute = false;
+											try {
+												const parsed = new URL(location);
+												isAbsolute = true;
+												if (allowedRedirectHosts && allowedRedirectHosts.length > 0) {
+													if (!allowedRedirectHosts.includes(parsed.hostname)) {
+														console.error(`[SECURITY] Redirect to disallowed host blocked: ${parsed.hostname}`);
+														throw new BunServerError('Redirect to disallowed host', 403);
+													}
+												}
+											} catch (e) {
+												if (e instanceof BunServerError) throw e;
+												// Relative URL — always allowed
+											}
+
+											if (!isAbsolute && !location.startsWith('/')) {
+												console.error(`[SECURITY] Redirect to ambiguous URL blocked: ${location}`);
+												throw new BunServerError('Invalid redirect URL', 400);
+											}
+
 											sent = true;
 											const mergedHeaders = new Headers({
 												Location: location,
