@@ -87,6 +87,7 @@ const app = createServer({
 | `state`         | `() => YourStateType` | `{}`    | Factory function called once per request to produce state |
 | `webSocket`     | `WebSocketConfig`     | —       | WebSocket configuration (see [WebSockets](#websockets))   |
 | `debug`         | `boolean`             | `false` | Log routing and request info to the console               |
+| `allowedRedirectHosts` | `string[]`     | —       | Allowlist of hostnames for absolute-URL redirects (see [redirect](#redirect)) |
 
 > **State is a factory function.** It's called fresh on every request, so each handler gets its own isolated copy. Use this to scope things like database transactions.
 
@@ -326,6 +327,17 @@ return res.redirect('/dashboard', 301); // permanent redirect
 ```
 
 Cookies and custom headers set before `redirect()` are included in the redirect response.
+
+**Open redirect protection** — by default, only root-relative paths (starting with `/`) are allowed. Bare relative paths like `../foo` are rejected with 400. To allow redirects to external hosts, pass `allowedRedirectHosts` to `createServer`:
+
+```ts
+createServer({
+  port: 3000,
+  allowedRedirectHosts: ['accounts.google.com'],
+});
+```
+
+Redirects to any absolute URL whose hostname is not in the allowlist are blocked with 403.
 
 ---
 
