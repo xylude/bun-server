@@ -257,7 +257,7 @@ export async function runMcpStdio(config: MCPConfig): Promise<void> {
 	}
 
 	while (true) {
-		let chunk: ReadableStreamReadResult<Uint8Array>;
+		let chunk: ReadableStreamDefaultReadResult<Uint8Array>;
 		try {
 			chunk = await reader.read();
 		} catch {
