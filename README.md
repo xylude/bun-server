@@ -26,6 +26,7 @@ A lightweight Express-like HTTP server for [Bun](https://bun.sh/) with WebSocket
   - [SPA Mode](#spa-mode)
   - [Priority vs Catchall Mode](#priority-vs-catchall-mode)
   - [Security](#security)
+- [Content-Security-Policy](#content-security-policy)
 - [WebSockets](#websockets)
 - [MCP (Model Context Protocol)](#mcp-model-context-protocol)
   - [HTTP Mode](#http-mode)
@@ -84,6 +85,7 @@ const app = createServer({
 | --------------- | --------------------- | ------- | --------------------------------------------------------- |
 | `port`          | `number`              | —       | Port to listen on                                         |
 | `globalHeaders` | `Record<string, any>` | `{}`    | Headers added to every response                           |
+| `csp`           | `CspDirectives \| false` | —    | Structured Content-Security-Policy, merged per-directive over the defaults (see [Content-Security-Policy](#content-security-policy)) |
 | `state`         | `() => YourStateType` | `{}`    | Factory function called once per request to produce state |
 | `webSocket`     | `WebSocketConfig`     | —       | WebSocket configuration (see [WebSockets](#websockets))   |
 | `debug`         | `boolean`             | `false` | Log routing and request info to the console               |
@@ -455,6 +457,74 @@ app.addPublicDirectory('./assets', {
 
 ---
 
+## Content-Security-Policy
+
+Static-file and SPA responses carry a strict default `Content-Security-Policy`. Rather than
+hand-writing the whole header string, pass a structured `csp` option to `createServer` — a map of
+directive → sources that is merged **per-directive** over the defaults. Each directive you list
+replaces the corresponding default; directives you don't list keep theirs.
+
+```ts
+import { createServer } from '@xylude/bun-server';
+
+const app = createServer({
+	port: 3000,
+	csp: {
+		// Replaces the default connect-src; every other directive keeps its default.
+		'connect-src': ["'self'", 'wss:', 'https://api.example.com'],
+		// Add an inline-script hash to the default script-src.
+		'script-src': ["'self'", "'sha256-abc123...'"],
+	},
+});
+```
+
+**Source values:**
+
+- `string[]` — the sources for a directive, e.g. `'img-src': ["'self'", 'data:', 'blob:']`.
+- `true` — a valueless directive that should be present, e.g. `'upgrade-insecure-requests': true`.
+- `false` — drop that directive entirely (removes it from the defaults).
+
+**Disable CSP entirely:**
+
+```ts
+createServer({ port: 3000, csp: false }); // no Content-Security-Policy header is sent
+```
+
+**Precedence.** A raw `Content-Security-Policy` string in `globalHeaders` still takes precedence
+over `csp` if both are set (back-compat with the pre-`csp` approach of overriding the whole
+header). Prefer `csp` for new code.
+
+**Default directives.** The defaults are exported as `DEFAULT_CSP_DIRECTIVES`, and the serializer
+that turns a directives object into a header string is exported as `buildCsp` — handy for reading
+the defaults or asserting on the resolved policy in tests.
+
+```ts
+import { DEFAULT_CSP_DIRECTIVES, buildCsp } from '@xylude/bun-server';
+
+buildCsp(DEFAULT_CSP_DIRECTIVES);
+// "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+```
+
+The default directives are:
+
+| Directive         | Default sources          |
+| ----------------- | ------------------------ |
+| `default-src`     | `'self'`                 |
+| `script-src`      | `'self'`                 |
+| `style-src`       | `'self' 'unsafe-inline'` |
+| `font-src`        | `'self' data:`           |
+| `img-src`         | `'self' data: blob:`     |
+| `connect-src`     | `'self'`                 |
+| `frame-ancestors` | `'none'`                 |
+| `base-uri`        | `'self'`                 |
+| `form-action`     | `'self'`                 |
+
+> **Note:** CSP is applied only to static-file / SPA responses (the HTML document), not to dynamic
+> route responses — which is where CSP is enforced by browsers anyway. `createTestServer` accepts
+> `csp` for config-shape parity but does not apply it, since it serves no static files.
+
+---
+
 ## WebSockets
 
 ```ts
@@ -497,6 +567,33 @@ const app = createServer({
 | `onConnected` | `(socket) => void`                               | Called when a client connects                                     |
 | `onMessage`   | `(socket, message) => void`                      | Called on each message; `message` is pre-parsed from JSON         |
 | `onClose`     | `(socket) => void`                               | Called when a client disconnects                                  |
+
+### Multiple WebSocket paths
+
+Pass an array to support more than one WebSocket endpoint on different paths:
+
+```ts
+const app = createServer({
+	port: 3000,
+	webSocket: [
+		{
+			path: '/ws',
+			onUpgrade: (req) => ({ userId: getUser(req) }),
+			onMessage: (socket, message) => { /* presence / typing */ },
+			onClose: (socket) => { /* cleanup */ },
+		},
+		{
+			path: '/ws/sharedb',
+			onUpgrade: (req) => ({ userId: getUser(req) }),
+			onConnected: (socket) => { /* hand off to ShareDB stream */ },
+			onMessage: (socket, message) => { /* ShareDB messages */ },
+			onClose: (socket) => { /* ShareDB close */ },
+		},
+	],
+});
+```
+
+Each config is matched by `path`. The internal `__wsPath` key is injected into `socket.data` for dispatch and should be treated as reserved.
 
 ---
 

@@ -13,6 +13,7 @@ import type {
 	PublicDirectoryOptions,
 	MCPConfig,
 	TLSConfig,
+	CspDirectives,
 } from './server-types';
 import { createMcpHttpHandler, runMcpStdio } from './mcp';
 import { WAF_COMMON_RULES, matchesWafRule } from './waf';
@@ -80,6 +81,52 @@ const DEFAULT_BLOCKED_PATTERNS = [
 	'bun.lockb',
 ];
 
+/**
+ * Default Content-Security-Policy expressed as a directives object. This is the structured
+ * source of truth behind the CSP string in `SECURE_DEFAULT_HEADERS`. Consumers can pass a `csp`
+ * option to `createServer` to merge over these per-directive (see `resolveCsp`).
+ */
+export const DEFAULT_CSP_DIRECTIVES: CspDirectives = {
+	'default-src': ["'self'"],
+	'script-src': ["'self'"],
+	'style-src': ["'self'", "'unsafe-inline'"],
+	'font-src': ["'self'", 'data:'],
+	'img-src': ["'self'", 'data:', 'blob:'],
+	'connect-src': ["'self'"],
+	'frame-ancestors': ["'none'"],
+	'base-uri': ["'self'"],
+	'form-action': ["'self'"],
+};
+
+/**
+ * Serializes a `CspDirectives` object into a `Content-Security-Policy` header string.
+ * - `string[]` sources are space-joined after the directive name.
+ * - `true` emits a valueless directive (e.g. `upgrade-insecure-requests`).
+ * - `false` (or an empty array) drops the directive.
+ */
+export function buildCsp(directives: CspDirectives): string {
+	const parts: string[] = [];
+	for (const [directive, value] of Object.entries(directives)) {
+		if (value === false) continue;
+		if (value === true) {
+			parts.push(directive);
+		} else if (Array.isArray(value) && value.length > 0) {
+			parts.push(`${directive} ${value.join(' ')}`);
+		}
+	}
+	return parts.join('; ');
+}
+
+/**
+ * Resolves a `csp` option into a header string, merging it per-directive over the defaults.
+ * Returns `null` when `csp` is `false` (CSP header should be omitted). `undefined` → defaults.
+ */
+function resolveCsp(csp: CspDirectives | false | undefined): string | null {
+	if (csp === false) return null;
+	if (!csp) return buildCsp(DEFAULT_CSP_DIRECTIVES);
+	return buildCsp({ ...DEFAULT_CSP_DIRECTIVES, ...csp });
+}
+
 // Security: Default secure headers for static files
 const SECURE_DEFAULT_HEADERS = {
 	'X-Content-Type-Options': 'nosniff',
@@ -91,17 +138,7 @@ const SECURE_DEFAULT_HEADERS = {
 	'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
 	// COOP: isolates browsing context without breaking OAuth popup flows
 	'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-	'Content-Security-Policy': [
-		"default-src 'self'",
-		"script-src 'self'",
-		"style-src 'self' 'unsafe-inline'",
-		"font-src 'self' data:",
-		"img-src 'self' data: blob:",
-		"connect-src 'self'",
-		"frame-ancestors 'none'",
-		"base-uri 'self'",
-		"form-action 'self'",
-	].join('; '),
+	'Content-Security-Policy': buildCsp(DEFAULT_CSP_DIRECTIVES),
 };
 
 /**
@@ -198,17 +235,25 @@ export function createServer<ProvidedState extends object>({
 	},
 	debug = false,
 	globalHeaders = {},
+	csp,
 	idleTimeout,
 	enableWaf = false,
 	wafOverrides,
 	allowedRedirectHosts,
 }: {
 	port: number;
-	webSocket?: WebSocketConfig;
+	webSocket?: WebSocketConfig | WebSocketConfig[];
 	mcp?: MCPConfig;
 	tls?: TLSConfig;
 	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
+	/**
+	 * Structured Content-Security-Policy applied to static-file / SPA responses, merged
+	 * per-directive over the secure defaults (see DEFAULT_CSP_DIRECTIVES). Set to `false` to omit
+	 * the CSP header entirely. A raw `Content-Security-Policy` string in `globalHeaders` still
+	 * takes precedence if both are set.
+	 */
+	csp?: CspDirectives | false;
 	debug?: boolean;
 	idleTimeout?: number;
 	/**
@@ -233,6 +278,21 @@ export function createServer<ProvidedState extends object>({
 	 */
 	allowedRedirectHosts?: string[];
 }): BunServer<ProvidedState> {
+	// Resolve the CSP once for this server instance and fold it into the secure header set used
+	// for static-file / SPA responses. `csp: false` omits the CSP header; otherwise the `csp`
+	// option is merged per-directive over the defaults.
+	const resolvedCsp = resolveCsp(csp);
+	const secureHeaders: Record<string, string> = { ...SECURE_DEFAULT_HEADERS };
+	if (resolvedCsp === null) {
+		delete secureHeaders['Content-Security-Policy'];
+	} else {
+		secureHeaders['Content-Security-Policy'] = resolvedCsp;
+	}
+
+	// Normalize webSocket to an array for uniform handling
+	const wsConfigs: WebSocketConfig[] = webSocket
+		? Array.isArray(webSocket) ? webSocket : [webSocket]
+		: [];
 	const registeredMethods: Record<
 		ValidMethods,
 		Record<string, HandlerFunc<ProvidedState>>
@@ -361,7 +421,7 @@ export function createServer<ProvidedState extends object>({
 			if (await file.exists()) {
 				// Build headers with secure defaults + custom headers
 				const headers = new Headers({
-					...SECURE_DEFAULT_HEADERS,
+					...secureHeaders,
 					...globalHeaders,
 					...publicDir.options.headers,
 				});
@@ -381,7 +441,7 @@ export function createServer<ProvidedState extends object>({
 					if (await indexFile.exists()) {
 						logLine('SPA mode: serving index.html for', path);
 						const headers = new Headers({
-							...SECURE_DEFAULT_HEADERS,
+							...secureHeaders,
 							...globalHeaders,
 							...publicDir.options.headers,
 							'Content-Type': 'text/html; charset=utf-8',
@@ -520,9 +580,16 @@ export function createServer<ProvidedState extends object>({
 				});
 			}
 
+			// Build a lookup map from wsPath → config for fast dispatch
+			const wsConfigMap = new Map<string, WebSocketConfig>();
+			for (const cfg of wsConfigs) {
+				wsConfigMap.set(cfg.path ?? '/ws', cfg);
+			}
+
 			const websocketConfig = {
 				message: (ws: any, message: any) => {
-					if (webSocket?.onMessage) {
+					const cfg = wsConfigMap.get(ws.data?.__wsPath);
+					if (cfg?.onMessage) {
 						let obj: string | undefined;
 						if (typeof message === 'string') {
 							try {
@@ -531,17 +598,19 @@ export function createServer<ProvidedState extends object>({
 								obj = message;
 							}
 						}
-						webSocket?.onMessage(GetModifiedServerWebsocket(ws), obj || message);
+						cfg.onMessage(GetModifiedServerWebsocket(ws), obj || message);
 					}
 				},
 				open: async (ws: any) => {
-					if (webSocket?.onConnected) {
-						webSocket?.onConnected(ws);
+					const cfg = wsConfigMap.get(ws.data?.__wsPath);
+					if (cfg?.onConnected) {
+						await cfg.onConnected(ws);
 					}
 				},
 				close: (ws: any) => {
-					if (webSocket?.onClose) {
-						webSocket?.onClose(ws);
+					const cfg = wsConfigMap.get(ws.data?.__wsPath);
+					if (cfg?.onClose) {
+						cfg.onClose(ws);
 					}
 				},
 			};
@@ -579,18 +648,22 @@ export function createServer<ProvidedState extends object>({
 
 						// Handle WebSocket upgrades before static file serving and route matching.
 						// Must run early — SPA catchall would otherwise intercept the GET and return 200.
-						if (webSocket) {
-							const wsPath = webSocket.path ?? '/ws';
-							if (path === wsPath) {
-								if (webSocket.onUpgrade) {
-									const upgradeData = webSocket.onUpgrade(request);
+						if (wsConfigs.length > 0) {
+							const matchedWsCfg = wsConfigs.find((cfg) => path === (cfg.path ?? '/ws'));
+							if (matchedWsCfg) {
+								const wsPath = matchedWsCfg.path ?? '/ws';
+								if (matchedWsCfg.onUpgrade) {
+									const upgradeData = matchedWsCfg.onUpgrade(request);
 									if (!upgradeData) {
 										throw new BunServerError(
 											'Websocket upgrade error. The onUpgrade function returned false.',
 											400
 										);
 									}
-									const success = server.upgrade(request, { data: upgradeData });
+									// Inject __wsPath so message/open/close handlers dispatch to the right config
+									const success = server.upgrade(request, {
+										data: { ...(upgradeData as Record<string, any>), __wsPath: wsPath },
+									});
 									if (!success) {
 										throw new BunServerError(
 											'Websocket upgrade error. Bun threw while trying to upgrade the connection.',
@@ -598,7 +671,7 @@ export function createServer<ProvidedState extends object>({
 										);
 									}
 								} else {
-									const success = server.upgrade(request);
+									const success = server.upgrade(request, { data: { __wsPath: wsPath } });
 									if (!success) {
 										throw new BunServerError(
 											'Websocket upgrade error. Bun failed to upgrade the connection.',

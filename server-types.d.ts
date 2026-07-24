@@ -261,6 +261,39 @@ export type TLSConfig = {
 	httpsPort: number;
 };
 
+/**
+ * A structured Content-Security-Policy: a map of directive name → sources.
+ *
+ * - `string[]` — the sources for that directive (e.g. `'connect-src': ["'self'", 'https://x.com']`).
+ * - `true` — a valueless directive that should be present (e.g. `'upgrade-insecure-requests': true`).
+ * - `false` — drop the directive entirely (removes it from the defaults).
+ *
+ * Pass this as the `csp` option to `createServer`. Each listed directive REPLACES the
+ * corresponding default; directives you don't list keep their default sources.
+ */
+export type CspDirectives = Record<string, string[] | boolean>;
+
+export type BunServerConfig<StateType> = {
+	port: number;
+	webSocket?: WebSocketConfig | WebSocketConfig[];
+	mcp?: MCPConfig;
+	tls?: TLSConfig;
+	state?: () => StateType;
+	globalHeaders?: Record<string, any>;
+	/**
+	 * Structured Content-Security-Policy applied to static-file / SPA responses, merged
+	 * per-directive over the secure defaults. Set to `false` to omit the CSP header entirely.
+	 * A raw `Content-Security-Policy` string in `globalHeaders` still takes precedence if both
+	 * are set.
+	 */
+	csp?: CspDirectives | false;
+	debug?: boolean;
+	idleTimeout?: number;
+	enableWaf?: boolean;
+	wafOverrides?: WafRule[];
+	allowedRedirectHosts?: string[];
+};
+
 export type BunServer<StateType> = {
 	get: (path: string, handler: HandlerFunc<StateType>) => void;
 	post: (path: string, handler: HandlerFunc<StateType>) => void;

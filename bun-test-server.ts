@@ -6,6 +6,7 @@ import type {
 	ResponseHandler,
 	ValidMethods,
 	CookieOptions,
+	CspDirectives,
 } from './server-types';
 import { BunServerError } from './index';
 
@@ -44,13 +45,25 @@ export function createTestServer<ProvidedState extends object>({
 	},
 	debug = false,
 	globalHeaders = {},
+	csp,
 }: {
 	state?: () => ProvidedState;
 	globalHeaders?: Record<string, any>;
+	/**
+	 * Structured Content-Security-Policy, accepted for config-shape parity with `createServer`
+	 * so the same config object typechecks against both. It is intentionally NOT applied here:
+	 * the real server applies CSP only to static-file / SPA responses, and the test server only
+	 * produces dynamic route responses (which never carry the secure-default CSP). To assert CSP
+	 * behavior, exercise the real server's static-file path. Use `buildCsp` to construct an
+	 * expected string if you want to compare against a route that sets CSP via `globalHeaders`.
+	 */
+	csp?: CspDirectives | false;
 	debug?: boolean;
 } = {}): BunServer<ProvidedState> & {
 	call: (path: string, options?: TestRequestOptions) => Promise<TestResponse>;
 } {
+	// `csp` is accepted for config parity but not applied — see the option's doc comment.
+	void csp;
 	const registeredMethods: Record<
 		ValidMethods,
 		Record<string, HandlerFunc<ProvidedState>>
